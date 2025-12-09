@@ -1,0 +1,155 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                    String     @id @default(auto()) @map("_id") @db.ObjectId
+  email                 String     @unique
+  fullName              String
+  phoneNumber           String
+  password              String
+  profileImage          String     @default("https://i.ibb.co.com/nrs3FjM/images.png")
+  gender                Gender     @default(Other)
+  role                  UserRole   @default(User)
+  status                UserStatus @default(Active)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  appleId               String?
+  fcmToken              String?
+  galleryImages         String[]
+  dob                   DateTime?
+  profession            String?
+  bio                   String?
+  interestedIn          String?
+  minAge                Int?
+  maxAge                Int?
+  relationship          String?
+  isVisibleRelationship Boolean    @default(false)
+  ethinicity            String[]
+  religion              String[]
+  intention             String[]
+  interests             String[]
+  address               String?
+  matchesAsUser1        Match[]    @relation("User1Matches")
+  matchesAsUser2        Match[]    @relation("User2Matches")
+  sender                Room[]     @relation("user1Relation")
+  receiver              Room[]     @relation("user2Relation")
+  friendsAsUser1        Friend[]   @relation("User1Friends")
+  friendsAsUser2        Friend[]   @relation("User2Friends")
+
+  @@map("users")
+}
+
+model Friend {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  user1Id   String       @db.ObjectId
+  user2Id   String       @db.ObjectId
+  status    FriendStatus @default(Pending)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  user1     User         @relation("User1Friends", fields: [user1Id], references: [id])
+  user2     User         @relation("User2Friends", fields: [user2Id], references: [id])
+
+  @@unique([user1Id, user2Id])
+  @@map("friends")
+}
+
+model Match {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  user1Id   String   @db.ObjectId
+  user2Id   String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user1     User     @relation("User1Matches", fields: [user1Id], references: [id])
+  user2     User     @relation("User2Matches", fields: [user2Id], references: [id])
+
+  @@map("matches")
+}
+
+model Room {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  user1Id   String?   @db.ObjectId
+  user2Id   String?   @db.ObjectId
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user1     User?     @relation("user1Relation", fields: [user1Id], references: [id])
+  user2     User?     @relation("user2Relation", fields: [user2Id], references: [id])
+  message   Message[]
+
+  @@unique([user1Id, user2Id])
+  @@map("rooms")
+}
+
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  roomId    String   @db.ObjectId
+  user1Id   String   @db.ObjectId
+  user2Id   String   @db.ObjectId
+  content   String?
+  fileUrl   String[]
+  user1Read Boolean  @default(false)
+  user2Read Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  room      Room     @relation(fields: [roomId], references: [id])
+
+  @@map("messages")
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+enum FriendStatus {
+  Pending
+  Accepted
+  Rejected
+}
+
+enum Intents {
+  Networking
+  Dating
+  Just_Chat
+}
+
+enum Tcheck {
+  Train_Line
+  Route
+  Station
+}
+
+enum Jcheck {
+  Right_Now
+  One_Two
+  Four_Five
+}
+
+enum UserStatus {
+  Active
+  Blocked
+  Deleted
+}
+
+enum UserRole {
+  User
+  Admin
+}
+
+enum Gender {
+  Male
+  Female
+  Other
+}
