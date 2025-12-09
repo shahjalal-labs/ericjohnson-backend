@@ -106,7 +106,7 @@ model Notification {
   userId    String
   title     String
   body      String
-  read      Boolean  @default(false)
+  isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

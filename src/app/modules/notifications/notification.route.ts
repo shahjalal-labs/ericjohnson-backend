@@ -5,10 +5,10 @@ import auth from "../../middlewares/auth";
 const router = express.Router();
 
 router.get("/", auth(), notificationController.getNotifications);
-router.get(
+router.patch(
   "/:notificationId",
   auth(),
-  notificationController.getSingleNotificationById
+  notificationController.singleNotificaton
 );
 
 export const notificationsRoute = router;

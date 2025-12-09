@@ -92,8 +92,8 @@ export const oneSignalNotifies = async (
 
 export const sendNotification = async (
   userId: string,
-  body: string,
-  title: string
+  title: string,
+  body: string
 ) => {
   const userInfo = await prisma.user.findUnique({
     where: {
@@ -115,7 +115,12 @@ export const sendNotification = async (
       token: userInfo.fcmToken,
     };
 
-    await admin.messaging().send(message);
+    try {
+      await admin.messaging().send(message);
+    } catch (error) {
+      console.log(error);
+      return;
+    }
     return;
   }
 
@@ -167,15 +172,11 @@ const getNotificationsFromDB = async (userId: string) => {
     orderBy: { createdAt: "desc" },
   });
 
-  if (notifications.length === 0) {
-    throw new ApiError(404, "No notifications found for the user");
-  }
-
   return notifications;
 };
 
-const getSingleNotificationFromDB = async (notificationId: string) => {
-  const notification = await prisma.notification.findFirst({
+const singleNotificaton = async (notificationId: string) => {
+  const notification = await prisma.notification.findUnique({
     where: {
       id: notificationId,
     },
@@ -187,7 +188,7 @@ const getSingleNotificationFromDB = async (notificationId: string) => {
 
   await prisma.notification.update({
     where: { id: notificationId },
-    data: { read: true },
+    data: { isRead: true },
   });
 
   return notification;
@@ -195,5 +196,5 @@ const getSingleNotificationFromDB = async (notificationId: string) => {
 
 export const notificationServices = {
   getNotificationsFromDB,
-  getSingleNotificationFromDB,
+  singleNotificaton,
 };

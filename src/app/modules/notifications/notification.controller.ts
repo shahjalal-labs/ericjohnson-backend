@@ -15,9 +15,9 @@ const getNotifications = catchAsync(async (req, res) => {
   });
 });
 
-const getSingleNotificationById = catchAsync(async (req, res) => {
+const singleNotificaton = catchAsync(async (req, res) => {
   const { notificationId } = req.params;
-  const notification = await notificationServices.getSingleNotificationFromDB(
+  const notification = await notificationServices.singleNotificaton(
     notificationId
   );
 
@@ -31,5 +31,5 @@ const getSingleNotificationById = catchAsync(async (req, res) => {
 
 export const notificationController = {
   getNotifications,
-  getSingleNotificationById,
+  singleNotificaton,
 };

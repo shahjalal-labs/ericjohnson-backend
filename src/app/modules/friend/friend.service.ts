@@ -1,5 +1,6 @@
 import ApiError from "../../../errors/ApiErrors";
 import prisma from "../../../shared/prisma";
+import { sendNotification } from "../notifications/notification.services";
 
 const sendFriendRequest = async (user1Id: string, user2Id: string) => {
   const myInfo = await prisma.user.findUnique({ where: { id: user1Id } });
@@ -17,6 +18,12 @@ const sendFriendRequest = async (user1Id: string, user2Id: string) => {
       user2Id,
     },
   });
+
+  await sendNotification(
+    user2Id,
+    "You have a new friend request",
+    `${myInfo.fullName} has sent you a friend request.`
+  );
   return;
 };
 
@@ -113,6 +120,12 @@ const acceptRequest = async (requestId: string) => {
     where: { id: requestId },
     data: { status: "Accepted" },
   });
+
+  await sendNotification(
+    isExist.user1Id,
+    "Friend request accepted",
+    `Your friend request has been accepted. You are now friends!`
+  );
   return;
 };
 
