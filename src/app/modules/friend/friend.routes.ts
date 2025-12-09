@@ -11,7 +11,6 @@ router.post(
 );
 router.get("/my-friends", auth(), friendControllers.myFriends);
 router.get("/receive-requests", auth(), friendControllers.receiveRequests);
-router.get("/:id", auth(), friendControllers.getFriendById);
 router.post(
   "/accept-request/:requestId",
   auth(),
@@ -23,5 +22,6 @@ router.delete(
   friendControllers.removeRequest
 );
 router.delete("/remove-friend/:id", auth(), friendControllers.deleteFriend);
+router.get("/matches-users", auth(), friendControllers.matchesUsers);
 
 export const friendRoutes = router;

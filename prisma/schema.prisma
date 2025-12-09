@@ -26,8 +26,8 @@ model User {
   profession            String?
   bio                   String?
   interestedIn          String?
-  minAge                Int?
-  maxAge                Int?
+  minAge                Int        @default(18)
+  maxAge                Int        @default(100)
   relationship          String?
   isVisibleRelationship Boolean    @default(false)
   ethinicity            String[]

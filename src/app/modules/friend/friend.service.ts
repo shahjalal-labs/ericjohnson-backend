@@ -138,6 +138,35 @@ const deleteFriend = async (id: string) => {
   return;
 };
 
+const matchesUsers = async (userId: string) => {
+  const userInfo = await prisma.user.findUnique({ where: { id: userId } });
+  if (!userInfo) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const matchUsers = await prisma.user.findMany({
+    where: {
+      id: { not: userId },
+      interestedIn: userInfo.interestedIn,
+      relationship: userInfo.relationship,
+      minAge: { gte: userInfo.minAge },
+      maxAge: { lte: userInfo.maxAge },
+      ethinicity: { hasSome: userInfo.ethinicity },
+      religion: { hasSome: userInfo.religion },
+      intention: { hasSome: userInfo.intention },
+      interests: { hasSome: userInfo.interests },
+    },
+    select: {
+      id: true,
+      fullName: true,
+      profileImage: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return matchUsers;
+};
+
 export const friendServices = {
   sendFriendRequest,
   myFriends,
@@ -146,4 +175,5 @@ export const friendServices = {
   acceptRequest,
   removeRequest,
   deleteFriend,
+  matchesUsers,
 };
