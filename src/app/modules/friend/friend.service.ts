@@ -160,7 +160,7 @@ const matchesUsers = async (userId: string) => {
   const matchUsers = await prisma.user.findMany({
     where: {
       id: { not: userId },
-      interestedIn: userInfo.interestedIn,
+      gender: userInfo.interestedIn,
       relationship: userInfo.relationship,
       minAge: { gte: userInfo.minAge },
       maxAge: { lte: userInfo.maxAge },

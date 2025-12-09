@@ -25,7 +25,7 @@ model User {
   dob                   DateTime?
   profession            String?
   bio                   String?
-  interestedIn          String?
+  interestedIn          Gender     @default(Other)
   minAge                Int        @default(18)
   maxAge                Int        @default(100)
   relationship          String?
