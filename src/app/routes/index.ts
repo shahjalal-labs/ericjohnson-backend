@@ -1,7 +1,6 @@
 import express from "express";
 import { userRoutes } from "../modules/user/user.route";
 import { authRoute } from "../modules/auth/auth.routes";
-import { intentRoutes } from "../modules/intent/intent.routes";
 import { matchRoutes } from "../modules/match/match.routes";
 import { messageRoute } from "../modules/message/message.routes";
 import { notificationsRoute } from "../modules/notifications/notification.route";
@@ -17,10 +16,6 @@ const moduleRoutes = [
   {
     path: "/auth",
     route: authRoute,
-  },
-  {
-    path: "/intent",
-    route: intentRoutes,
   },
   {
     path: "/match",
