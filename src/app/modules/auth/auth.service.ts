@@ -73,7 +73,6 @@ const loginUserIntoDB = async (payload: {
     email: user.email,
     role: user.role,
     isSetup: isSetup ?? false,
-    test: true,
   };
 };
 
