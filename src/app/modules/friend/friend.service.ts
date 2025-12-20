@@ -164,10 +164,21 @@ const matchesUsers = async (userId: string) => {
       relationship: userInfo.relationship,
       minAge: { gte: userInfo.minAge },
       maxAge: { lte: userInfo.maxAge },
-      ethinicity: { hasSome: userInfo.ethinicity },
-      religion: { hasSome: userInfo.religion },
-      intention: { hasSome: userInfo.intention },
+      myEthnicity: { in: userInfo.ethinicity },
+      religiousBeliefs: { in: userInfo.religion },
+      intention: userInfo.intention,
       interests: { hasSome: userInfo.interests },
+      politics: userInfo.politics,
+      languages: userInfo.languages,
+      height:
+        userInfo.height == null
+          ? undefined
+          : userInfo.gender === "Female"
+          ? { gte: userInfo.height }
+          : { lte: userInfo.height },
+      myChildren: userInfo.myChildren,
+      familyPlans: userInfo.familyPlans,
+      vices: userInfo.vices,
     },
     select: {
       id: true,

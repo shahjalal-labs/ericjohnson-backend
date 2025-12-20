@@ -13,18 +13,30 @@ model User {
   fullName              String
   phoneNumber           String
   password              String
-  profileImage          String     @default("https://i.ibb.co.com/nrs3FjM/images.png")
-  gender                Gender     @default(Other)
   role                  UserRole   @default(User)
   status                UserStatus @default(Active)
   createdAt             DateTime   @default(now())
   updatedAt             DateTime   @updatedAt
+  // Additional profile fields
+  profileImage          String     @default("https://i.ibb.co.com/nrs3FjM/images.png")
+  gender                Gender     @default(Other)
   appleId               String?
   fcmToken              String?
   galleryImages         String[]
   dob                   DateTime?
   profession            String?
   bio                   String?
+  address               String?
+  religiousBeliefs      String?
+  politics              String?
+  languages             String?
+  intention             String?
+  height                Int?
+  myEthnicity           String?
+  myChildren            Int?
+  familyPlans           String?
+  vices                 String?
+  //for matching algorithm
   interestedIn          Gender     @default(Other)
   minAge                Int        @default(18)
   maxAge                Int        @default(100)
@@ -32,9 +44,8 @@ model User {
   isVisibleRelationship Boolean    @default(false)
   ethinicity            String[]
   religion              String[]
-  intention             String[]
   interests             String[]
-  address               String?
+  //relations
   matchesAsUser1        Match[]    @relation("User1Matches")
   matchesAsUser2        Match[]    @relation("User2Matches")
   sender                Room[]     @relation("user1Relation")

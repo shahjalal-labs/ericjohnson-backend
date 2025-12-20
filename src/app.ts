@@ -7,6 +7,8 @@ import path from "path";
 import prisma from "./shared/prisma";
 import { bullBoardRouter } from "./bullBoard";
 import basicAuth from "express-basic-auth";
+import axios from "axios";
+import xml2js from "xml2js";
 
 const app: Application = express();
 
@@ -33,6 +35,45 @@ app.get("/", (req: Request, res: Response) => {
   });
 });
 
+app.get("/api/game", async (req, res) => {
+  try {
+    const response = await axios.get(
+      "https://gamemonetize.com/feed.php?format=json",
+      {
+        headers: {
+          "User-Agent": "MyApp",
+        },
+      }
+    );
+
+    const xml = response.data;
+
+    // Parse XML → JS Object
+    const result = await xml2js.parseStringPromise(xml, {
+      explicitArray: false,
+    });
+
+    // Extract items
+    const items = result.rss.channel.item;
+
+    // Normalize to array
+    const games = Array.isArray(items) ? items : [items];
+
+    // Extract URLs
+    const gameUrls = games.map((game) => ({
+      id: game.id,
+      title: game.title,
+      url: game.url,
+      thumb: game.thumb,
+    }));
+
+    res.json(gameUrls);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error fetching game feed" });
+  }
+});
+
 // Router setup
 app.use("/api/v1", router);
 app.use(
@@ -43,11 +84,7 @@ app.use(
   }),
   bullBoardRouter
 );
-
-// Global Error Handler
 app.use(GlobalErrorHandler);
-
-// API Not found handler
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.status(httpStatus.NOT_FOUND).json({
     success: false,

@@ -23,6 +23,7 @@ export function verifyWebSocketToken(ws: any, token: string) {
         : "Invalid token!";
 
     ws.send(JSON.stringify({ type: "error", message: errorMessage }));
+    ws.close(1008);
     return null;
   }
 }
