@@ -1,4 +1,5 @@
 import ApiError from "../../../errors/ApiErrors";
+import redisClient from "../../../helpers/redis";
 import prisma from "../../../shared/prisma";
 import { sendNotification } from "../notifications/notification.services";
 
@@ -157,9 +158,29 @@ const matchesUsers = async (userId: string) => {
     throw new ApiError(404, "User not found");
   }
 
+  const redisGeoKey = "userLocations";
+  const radiusKm = userInfo.maxDistance || 50;
+
+  const nearbyRaw = (await redisClient.georadiusbymember(
+    redisGeoKey,
+    userId,
+    radiusKm,
+    "km",
+    "WITHDIST",
+    "WITHCOORD"
+  )) as any[];
+
+  if (!nearbyRaw || nearbyRaw.length === 0) return [];
+
+  const nearbyIds = nearbyRaw
+    .map((u: any) => u[0])
+    .filter((id: string) => id !== userId);
+
+  if (nearbyIds.length === 0) return [];
+
   const matchUsers = await prisma.user.findMany({
     where: {
-      id: { not: userId },
+      id: { not: userId, in: nearbyIds },
       gender: userInfo.interestedIn,
       relationship: userInfo.relationship,
       minAge: { gte: userInfo.minAge },
