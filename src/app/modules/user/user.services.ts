@@ -111,30 +111,46 @@ const signupVerification = async (payload: {
 const getSingleUserIntoDB = async (id: string) => {
   const user = await prisma.user.findUnique({
     where: { id },
-    select: {
-      id: true,
-      profileImage: true,
-      fullName: true,
-      email: true,
-      bio: true,
-      interests: true,
-      galleryImages: true,
-      phoneNumber: true,
-      gender: true,
-      address: true,
-      dob: true,
-      interestedIn: true,
-      relationship: true,
-      ethinicity: true,
-      religion: true,
-      intention: true,
-      profession: true,
-    },
   });
   if (!user) {
     throw new ApiError(404, "user not found!");
   }
-  return user;
+  return {
+    id: user.id,
+    email: user.isEmail ? user.email : undefined,
+    profileImage: user.profileImage,
+    fullName: user.visibleFullName ? user.fullName : undefined,
+    bio: user.visibleBio ? user.bio : undefined,
+    phoneNumber: user.visiblePhoneNumber ? user.phoneNumber : undefined,
+    gender: user.visibleGender ? user.gender : undefined,
+    dob: user.visibleDob ? user.dob : undefined,
+    galleryImages: user.galleryImages,
+    profession: user.visibleProfession ? user.profession : undefined,
+    address: user.visibleAddress ? user.address : undefined,
+    religiousBeliefs: user.visibleReligiousBeliefs
+      ? user.religiousBeliefs
+      : undefined,
+    politics: user.visiblePolitics ? user.politics : undefined,
+    languages: user.visibleLanguages ? user.languages : undefined,
+    intention: user.visibleIntention ? user.intention : undefined,
+    height: user.visibleHeight ? user.height : undefined,
+    myEthnicity: user.visibleMyEthnicity ? user.myEthnicity : undefined,
+    myChildren: user.visibleMyChildren ? user.myChildren : undefined,
+    familyPlans: user.visibleFamilyPlans ? user.familyPlans : undefined,
+    vices: user.visibleVices ? user.vices : undefined,
+    maxDistance: user.maxDistance,
+    interestedIn: user.interestedIn,
+    minAge: user.minAge,
+    maxAge: user.maxAge,
+    relationship: user.relationship,
+    ethnicity: user.ethinicity,
+    isEthnicityBreak: user.isEthnicityBreak,
+    religion: user.religion,
+    isReligionBreak: user.isReligionBreak,
+    role: user.role,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
 };
 
 //get all users
