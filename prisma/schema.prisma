@@ -8,50 +8,69 @@ generator client {
 }
 
 model User {
-  id                    String     @id @default(auto()) @map("_id") @db.ObjectId
-  email                 String     @unique
-  fullName              String
-  phoneNumber           String
-  password              String
-  role                  UserRole   @default(User)
-  status                UserStatus @default(Active)
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @updatedAt
+  id                      String     @id @default(auto()) @map("_id") @db.ObjectId
+  email                   String     @unique
+  isEmail                 Boolean    @default(true)
+  fullName                String
+  visibleFullName         Boolean    @default(true)
+  phoneNumber             String
+  visiblePhoneNumber      Boolean    @default(true)
+  password                String
+  role                    UserRole   @default(User)
+  status                  UserStatus @default(Active)
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
   // Additional profile fields
-  profileImage          String     @default("https://i.ibb.co.com/nrs3FjM/images.png")
-  gender                Gender     @default(Other)
-  appleId               String?
-  fcmToken              String?
-  galleryImages         String[]
-  dob                   DateTime?
-  profession            String?
-  bio                   String?
-  address               String?
-  religiousBeliefs      String?
-  politics              String?
-  languages             String?
-  intention             String?
-  height                Int?
-  myEthnicity           String?
-  myChildren            Int?
-  familyPlans           String?
-  vices                 String?
+  profileImage            String     @default("https://i.ibb.co.com/nrs3FjM/images.png")
+  gender                  Gender     @default(Other)
+  visibleGender           Boolean    @default(true)
+  appleId                 String?
+  fcmToken                String?
+  galleryImages           String[]
+  dob                     DateTime?
+  visibleDob              Boolean    @default(true)
+  profession              String?
+  visibleProfession       Boolean    @default(true)
+  bio                     String?
+  visibleBio              Boolean    @default(true)
+  address                 String?
+  visibleAddress          Boolean    @default(true)
+  religiousBeliefs        String?
+  visibleReligiousBeliefs Boolean    @default(true)
+  politics                String?
+  visiblePolitics         Boolean    @default(true)
+  languages               String?
+  visibleLanguages        Boolean    @default(true)
+  intention               String?
+  visibleIntention        Boolean    @default(true)
+  height                  Int?
+  visibleHeight           Boolean    @default(true)
+  myEthnicity             String?
+  visibleMyEthnicity      Boolean    @default(true)
+  myChildren              Int?
+  visibleMyChildren       Boolean    @default(true)
+  familyPlans             String?
+  visibleFamilyPlans      Boolean    @default(true)
+  vices                   String?
+  visibleVices            Boolean    @default(true)
   //for matching algorithm
-  interestedIn          Gender     @default(Other)
-  minAge                Int        @default(18)
-  maxAge                Int        @default(100)
-  relationship          String?
-  isVisibleRelationship Boolean    @default(false)
-  ethinicity            String[]
-  religion              String[]
-  interests             String[]
+  maxDistance             Int        @default(50)
+  interestedIn            Gender     @default(Other)
+  minAge                  Int        @default(18)
+  maxAge                  Int        @default(100)
+  relationship            String?
+  ethinicity              String[]
+  isEthnicityBreak        Boolean    @default(false)
+  religion                String[]
+  isReligionBreak         Boolean    @default(false)
+  interests               String[]
   //relations
-  matchesAsUser1        Match[]    @relation("User1Matches")
-  matchesAsUser2        Match[]    @relation("User2Matches")
-  sender                Room[]     @relation("user1Relation")
-  receiver              Room[]     @relation("user2Relation")
-  friendsAsUser1        Friend[]   @relation("User1Friends")
-  friendsAsUser2        Friend[]   @relation("User2Friends")
+  matchesAsUser1          Match[]    @relation("User1Matches")
+  matchesAsUser2          Match[]    @relation("User2Matches")
+  sender                  Room[]     @relation("user1Relation")
+  receiver                Room[]     @relation("user2Relation")
+  friendsAsUser1          Friend[]   @relation("User1Friends")
+  friendsAsUser2          Friend[]   @relation("User2Friends")
 
   @@map("users")
 }
