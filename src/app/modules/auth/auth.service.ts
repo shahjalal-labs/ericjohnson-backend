@@ -312,25 +312,6 @@ const resetForgotPasswordDB = async (newPassword: string, userId: string) => {
 const myProfile = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: {
-      id: true,
-      profileImage: true,
-      fullName: true,
-      email: true,
-      bio: true,
-      gender: true,
-      address: true,
-      phoneNumber: true,
-      dob: true,
-      // interests: true,
-      // galleryImages: true,
-      // interestedIn: true,
-      // relationship: true,
-      // ethinicity: true,
-      // religion: true,
-      // intention: true,
-      profession: true,
-    },
   });
   if (!user) {
     throw new ApiError(404, "user not found!");
