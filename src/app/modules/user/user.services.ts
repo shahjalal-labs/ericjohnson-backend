@@ -117,11 +117,11 @@ const getSingleUserIntoDB = async (id: string) => {
   }
   return {
     id: user.id,
-    email: user.isEmail ? user.email : undefined,
+    email: user.email,
     profileImage: user.profileImage,
-    fullName: user.visibleFullName ? user.fullName : undefined,
+    fullName: user.fullName,
     bio: user.visibleBio ? user.bio : undefined,
-    phoneNumber: user.visiblePhoneNumber ? user.phoneNumber : undefined,
+    phoneNumber: user.phoneNumber,
     gender: user.visibleGender ? user.gender : undefined,
     dob: user.visibleDob ? user.dob : undefined,
     galleryImages: user.galleryImages,

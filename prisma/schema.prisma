@@ -10,11 +10,8 @@ generator client {
 model User {
   id                      String     @id @default(auto()) @map("_id") @db.ObjectId
   email                   String     @unique
-  isEmail                 Boolean    @default(true)
   fullName                String
-  visibleFullName         Boolean    @default(true)
   phoneNumber             String
-  visiblePhoneNumber      Boolean    @default(true)
   password                String
   role                    UserRole   @default(User)
   status                  UserStatus @default(Active)
