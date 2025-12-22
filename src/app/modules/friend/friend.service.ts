@@ -199,7 +199,6 @@ const matchesUsers = async (userId: string) => {
           : { lte: userInfo.height },
       myChildren: userInfo.myChildren,
       familyPlans: userInfo.familyPlans,
-      vices: userInfo.vices,
     },
     select: {
       id: true,
