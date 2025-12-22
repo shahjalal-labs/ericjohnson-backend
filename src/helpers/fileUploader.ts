@@ -10,8 +10,18 @@ const upload = multer({
       "image/jpeg",
       "image/jpg",
       "image/png",
+      "image/gif",
+      "image/webp",
+      "video/mpeg",
       "video/mp4",
+      "audio/mpeg",
+      "audio/mp3",
       "video/x-matroska",
+      "audio/mpeg",
+      "application/zip",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
     if (!allowedMimeTypes.includes(file.mimetype)) {
       return cb(new Error("File type not allowed") as unknown as null, false);
