@@ -21,6 +21,7 @@ const locationUpdateSchema = z.object({
     .max(180, "Longitude must be less than or equal to 180"),
 });
 
+const VicesSchema = z.array(z.record(z.string()));
 const updateProfileSchema = z
   .object({
     fullName: z.string().min(1),
@@ -51,7 +52,7 @@ const updateProfileSchema = z
     visibleMyChildren: z.boolean(),
     familyPlans: z.string(),
     visibleFamilyPlans: z.boolean(),
-    vices: z.string(),
+    vices: VicesSchema.optional(),
     visibleVices: z.boolean(),
     maxDistance: z.number().int().min(1).max(1000),
     interestedIn: z.enum(["Male", "Female", "Other"]),
