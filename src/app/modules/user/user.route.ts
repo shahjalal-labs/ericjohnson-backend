@@ -8,10 +8,14 @@ const router = express.Router();
 
 router.post(
   "/create",
-  validateRequest(userValidation.userRegisterValidationSchema),
+  validateRequest(userValidation.userRegistrationSchema),
   UserControllers.createUser
 );
-router.post("/signup-verification", UserControllers.signupVerification);
+router.post(
+  "/signup-verification",
+  validateRequest(userValidation.verificationSchema),
+  UserControllers.signupVerification
+);
 router.get("/:id", auth(), UserControllers.getSingleUser);
 
 export const userRoutes = router;
