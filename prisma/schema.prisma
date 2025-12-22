@@ -51,7 +51,7 @@ model User {
   visibleMyChildren       Boolean    @default(true)
   familyPlans             String?
   visibleFamilyPlans      Boolean    @default(true)
-  vices                   String?
+  vices                   Json?
   visibleVices            Boolean    @default(true)
   //for matching algorithm
   maxDistance             Int        @default(50)
