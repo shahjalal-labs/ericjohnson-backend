@@ -47,7 +47,7 @@ model User {
   visibleHeight           Boolean    @default(true)
   myEthnicity             String?
   visibleMyEthnicity      Boolean    @default(true)
-  myChildren              Int?
+  myChildren              String?
   visibleMyChildren       Boolean    @default(true)
   familyPlans             String?
   visibleFamilyPlans      Boolean    @default(true)
