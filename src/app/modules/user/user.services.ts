@@ -123,7 +123,12 @@ const getSingleUserIntoDB = async (id: string) => {
     phoneNumber: user.phoneNumber,
     gender: user.visibleGender ? user.gender : undefined,
     dob: user.visibleDob ? user.dob : undefined,
-    galleryImages: user.galleryImages,
+    galleryImage1: user.galleryImage1,
+    galleryImage2: user.galleryImage2,
+    galleryImage3: user.galleryImage3,
+    galleryImage4: user.galleryImage4,
+    galleryImage5: user.galleryImage5,
+    galleryImage6: user.galleryImage6,
     profession: user.visibleProfession ? user.profession : undefined,
     address: user.visibleAddress ? user.address : undefined,
     religiousBeliefs: user.visibleReligiousBeliefs

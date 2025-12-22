@@ -23,7 +23,12 @@ model User {
   visibleGender           Boolean    @default(true)
   appleId                 String?
   fcmToken                String?
-  galleryImages           String[]
+  galleryImage1           String?
+  galleryImage2           String?
+  galleryImage3           String?
+  galleryImage4           String?
+  galleryImage5           String?
+  galleryImage6           String?
   dob                     DateTime?
   visibleDob              Boolean    @default(true)
   profession              String?

@@ -40,6 +40,12 @@ const uploadMultiple = upload.fields([
   { name: "classVideo", maxCount: 1 },
   { name: "galleryImages", maxCount: 5 },
   { name: "profileImage", maxCount: 1 },
+  { name: "galleryImage1", maxCount: 1 },
+  { name: "galleryImage2", maxCount: 1 },
+  { name: "galleryImage3", maxCount: 1 },
+  { name: "galleryImage4", maxCount: 1 },
+  { name: "galleryImage5", maxCount: 1 },
+  { name: "galleryImage6", maxCount: 1 },
   { name: "files", maxCount: 4 },
 ]);
 

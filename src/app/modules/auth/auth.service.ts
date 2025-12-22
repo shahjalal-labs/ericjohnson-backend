@@ -64,8 +64,7 @@ const loginUserIntoDB = async (payload: {
     user.dob &&
     user.gender !== "Other" &&
     user.profession &&
-    user.interests.length !== 0 &&
-    user.galleryImages.length !== 0;
+    user.interests.length !== 0;
 
   return {
     accessToken,
@@ -106,8 +105,7 @@ const authLogin = async (payload: {
       user.dob &&
       user.gender !== "Other" &&
       user.profession &&
-      user.interests.length !== 0 &&
-      user.galleryImages.length !== 0;
+      user.interests.length !== 0;
 
     return {
       accessToken,
@@ -359,12 +357,27 @@ const updateProfileImages = async (
   };
 
   const takeProfileImage = files?.["profileImage"] || [];
-  const takeGalleryImages = files?.["galleryImages"] || [];
+  const takeGalleryImage1 = files?.["galleryImage1"] || [];
+  const takeGalleryImage2 = files?.["galleryImage2"] || [];
+  const takeGalleryImage3 = files?.["galleryImage3"] || [];
+  const takeGalleryImage4 = files?.["galleryImage4"] || [];
+  const takeGalleryImage5 = files?.["galleryImage5"] || [];
+  const takeGalleryImage6 = files?.["galleryImage6"] || [];
 
   const profileImage =
     takeProfileImage.length > 0 ? await processImages(takeProfileImage) : [];
-  const galleryImages =
-    takeGalleryImages.length > 0 ? await processImages(takeGalleryImages) : [];
+  const galleryImage1 =
+    takeGalleryImage1.length > 0 ? await processImages(takeGalleryImage1) : [];
+  const galleryImage2 =
+    takeGalleryImage2.length > 0 ? await processImages(takeGalleryImage2) : [];
+  const galleryImage3 =
+    takeGalleryImage3.length > 0 ? await processImages(takeGalleryImage3) : [];
+  const galleryImage4 =
+    takeGalleryImage4.length > 0 ? await processImages(takeGalleryImage4) : [];
+  const galleryImage5 =
+    takeGalleryImage5.length > 0 ? await processImages(takeGalleryImage5) : [];
+  const galleryImage6 =
+    takeGalleryImage6.length > 0 ? await processImages(takeGalleryImage6) : [];
 
   await prisma.user.update({
     where: { id: userId },
@@ -372,8 +385,18 @@ const updateProfileImages = async (
       ...userData,
       profileImage:
         takeProfileImage.length > 0 ? profileImage[0] : user.profileImage,
-      galleryImages:
-        takeGalleryImages.length > 0 ? galleryImages : user.galleryImages,
+      galleryImage1:
+        galleryImage1.length > 0 ? galleryImage1[0] : user.galleryImage1,
+      galleryImage2:
+        galleryImage2.length > 0 ? galleryImage2[0] : user.galleryImage2,
+      galleryImage3:
+        galleryImage3.length > 0 ? galleryImage3[0] : user.galleryImage3,
+      galleryImage4:
+        galleryImage4.length > 0 ? galleryImage4[0] : user.galleryImage4,
+      galleryImage5:
+        galleryImage5.length > 0 ? galleryImage5[0] : user.galleryImage5,
+      galleryImage6:
+        galleryImage6.length > 0 ? galleryImage6[0] : user.galleryImage6,
     },
   });
 
