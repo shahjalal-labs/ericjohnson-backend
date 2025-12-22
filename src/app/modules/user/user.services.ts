@@ -1,7 +1,6 @@
 import { User } from "@prisma/client";
 import ApiError from "../../../errors/ApiErrors";
 import bcrypt from "bcryptjs";
-import { ObjectId } from "mongodb";
 import prisma from "../../../shared/prisma";
 import generateOTP from "../../../helpers/generateOtp";
 import redisClient from "../../../helpers/redis";
@@ -153,55 +152,8 @@ const getSingleUserIntoDB = async (id: string) => {
   };
 };
 
-//get all users
-const getUsersIntoDB = async () => {
-  const users = await prisma.user.findMany();
-  if (users.length === 0) {
-    throw new ApiError(404, "Users not found!");
-  }
-  const sanitizedUsers = users.map((user) => {
-    const { password, ...sanitizedUser } = user;
-    return sanitizedUser;
-  });
-  return sanitizedUsers;
-};
-
-//update user
-const updateUserIntoDB = async (id: string, userData: any) => {
-  if (!ObjectId.isValid(id)) {
-    throw new ApiError(400, "Invalid user ID format");
-  }
-  const existingUser = await getSingleUserIntoDB(id);
-  if (!existingUser) {
-    throw new ApiError(404, "user not found for edit user");
-  }
-  const updatedUser = await prisma.user.update({
-    where: { id },
-    data: userData,
-  });
-
-  const { password, ...sanitizedUser } = updatedUser;
-
-  return sanitizedUser;
-};
-
-//delete user
-const deleteUserIntoDB = async (userId: string, loggedId: string) => {
-  const existingUser = await getSingleUserIntoDB(userId);
-  if (!existingUser) {
-    throw new ApiError(404, "user not found for delete this");
-  }
-  await prisma.user.delete({
-    where: { id: userId },
-  });
-  return;
-};
-
 export const userService = {
   createUserIntoDB,
   signupVerification,
-  getUsersIntoDB,
   getSingleUserIntoDB,
-  updateUserIntoDB,
-  deleteUserIntoDB,
 };

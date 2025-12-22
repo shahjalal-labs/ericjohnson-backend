@@ -26,6 +26,7 @@ router.patch(
   auth(),
   fileUploader.uploadMultiple,
   parseBodyData,
+  validateRequest(authValidation.updateProfileSchema),
   authController.updateProfileImages
 );
 router.patch("/change-password", auth(), authController.changePassword);

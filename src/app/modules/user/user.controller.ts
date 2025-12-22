@@ -25,17 +25,6 @@ const signupVerification = catchAsync(async (req, res) => {
   });
 });
 
-//get users
-const getUsers = catchAsync(async (req: Request, res: Response) => {
-  const users = await userService.getUsersIntoDB();
-  sendResponse(res, {
-    success: true,
-    statusCode: 200,
-    message: "users retrived successfully",
-    data: users,
-  });
-});
-
 //get single user
 const getSingleUser = catchAsync(async (req: Request, res: Response) => {
   const user = await userService.getSingleUserIntoDB(req.params.id);
@@ -47,37 +36,8 @@ const getSingleUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-//update user
-const updateUser = catchAsync(async (req: Request, res: Response) => {
-  const updatedUser = await userService.updateUserIntoDB(
-    req.params.id,
-    req.body
-  );
-  sendResponse(res, {
-    success: true,
-    statusCode: 200,
-    message: "user updated successfully",
-    data: updatedUser,
-  });
-});
-
-//delete user
-const deleteUser = catchAsync(async (req: any, res: Response) => {
-  const userId = req.params.id;
-  const loggedId = req.user.id;
-  await userService.deleteUserIntoDB(userId, loggedId);
-  sendResponse(res, {
-    success: true,
-    statusCode: 200,
-    message: "user deleted successfully",
-  });
-});
-
 export const UserControllers = {
   createUser,
   signupVerification,
-  getUsers,
   getSingleUser,
-  updateUser,
-  deleteUser,
 };
