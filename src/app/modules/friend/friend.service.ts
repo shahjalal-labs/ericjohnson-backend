@@ -159,7 +159,8 @@ const matchesUsers = async (userId: string) => {
   }
 
   const redisGeoKey = "userLocations";
-  const radiusKm = userInfo.maxDistance || 50;
+  const radiusMile = userInfo.maxDistance || 50;
+  const radiusKm = radiusMile * 1.60934;
 
   const nearbyRaw = (await redisClient.georadiusbymember(
     redisGeoKey,
