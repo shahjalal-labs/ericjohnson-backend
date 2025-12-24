@@ -226,7 +226,21 @@ const matchesUsers = async (userId: string) => {
     orderBy: { createdAt: "desc" },
   });
 
-  return matchUsers;
+  const matchedUsers = matchUsers.map((user) => {
+    const friendId = [userId, user.id].sort().join("_");
+    const existingFriendship = prisma.friend.findUnique({
+      where: { uniqueKey: friendId },
+    });
+    return {
+      ...user,
+      isFriend: !!existingFriendship,
+      isSendRequest: existingFriendship
+        ? existingFriendship.then((f) => f?.status === "Pending")
+        : false,
+    };
+  });
+
+  return matchedUsers;
 };
 
 export const friendServices = {
