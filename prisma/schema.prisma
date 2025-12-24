@@ -81,13 +81,13 @@ model Friend {
   id        String       @id @default(auto()) @map("_id") @db.ObjectId
   user1Id   String       @db.ObjectId
   user2Id   String       @db.ObjectId
+  uniqueKey String       @unique
   status    FriendStatus @default(Pending)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   user1     User         @relation("User1Friends", fields: [user1Id], references: [id])
   user2     User         @relation("User2Friends", fields: [user2Id], references: [id])
 
-  @@unique([user1Id, user2Id])
   @@map("friends")
 }
 

@@ -13,10 +13,27 @@ const sendFriendRequest = async (user1Id: string, user2Id: string) => {
     throw new ApiError(404, "User not found");
   }
 
+  const uniqueKey = [user1Id, user2Id].sort().join("_");
+
+  const existingRequest = await prisma.friend.findUnique({
+    where: {
+      uniqueKey: uniqueKey,
+    },
+  });
+
+  if (existingRequest) {
+    if (existingRequest.status === "Pending") {
+      throw new ApiError(400, "Friend request already sent");
+    } else if (existingRequest.status === "Accepted") {
+      throw new ApiError(400, "You are already friends");
+    }
+  }
+
   await prisma.friend.create({
     data: {
       user1Id,
       user2Id,
+      uniqueKey: uniqueKey,
     },
   });
 
