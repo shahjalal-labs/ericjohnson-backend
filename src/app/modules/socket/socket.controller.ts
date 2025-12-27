@@ -6,6 +6,7 @@ import { parse } from "url";
 import { CustomWebSocket } from "./socket.interface";
 import redisClient from "../../../helpers/redis";
 import { getNearbyUsers } from "../auth/auth.service";
+import { v4 as uuidv4 } from "uuid";
 
 const roomUsers = new Map<string, Set<WebSocket>>();
 const connectedUsers = new Map<string, CustomWebSocket>();
@@ -118,8 +119,17 @@ export function setupWebSocketServer(server: any) {
 
     ws.on("message", async (message: any) => {
       try {
-        const { type, receiverId, content, fileUrl, longitude, latitude } =
-          JSON.parse(message.toString());
+        const {
+          type,
+          receiverId,
+          content,
+          fileUrl,
+          longitude,
+          latitude,
+          gameId,
+          gameScore,
+          userIds,
+        } = JSON.parse(message.toString());
 
         const getConversationsForUser = async (targetUserId: string) => {
           const rooms = await prisma.room.findMany({
@@ -497,6 +507,160 @@ export function setupWebSocketServer(server: any) {
 
           //   break;
           // }
+
+          case "invite-player": {
+            if (!gameId) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "gameId is required",
+                })
+              );
+              break;
+            }
+            if (userIds === undefined || userIds.length === 0) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "userIds is required",
+                })
+              );
+            }
+
+            const roomId = uuidv4();
+
+            //store roomId and gameId in redis for future reference
+            const gameRoomKey = `gameRoom:${roomId}`;
+            await redisClient.set(gameRoomKey, gameId);
+
+            const inviteLink = `https://playspark.smtsigma.com/game?gameId=${gameId}&room=${roomId}`;
+            const inviteMessage = {
+              content: `Join me in playing! Click here: ${inviteLink}`,
+            };
+
+            ws.send(
+              JSON.stringify({
+                type: "invite-link",
+                gameId,
+                inviteLink,
+                message: inviteMessage,
+              })
+            );
+
+            break;
+          }
+
+          case "game-start": {
+            if (gameId === undefined) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "gameId is required",
+                })
+              );
+              break;
+            }
+            if (roomId === undefined) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "roomId is required",
+                })
+              );
+              break;
+            }
+
+            //create a object to user is ready to play
+            const readyObject = {
+              userId,
+              status: "ready",
+            };
+
+            const gameReadyKey = `gameRoom:${roomId}:readyUsers`;
+
+            // Remove previous entry for this user (idempotent)
+            const existing = await redisClient.lrange(gameReadyKey, 0, -1);
+            for (const item of existing) {
+              if (JSON.parse(item).userId === userId) {
+                await redisClient.lrem(gameReadyKey, 1, item);
+                break;
+              }
+            }
+            await redisClient.rpush(gameReadyKey, JSON.stringify(readyObject));
+
+            //show all users in this game room that this user is ready
+            const readyUsersRaw = await redisClient.lrange(gameReadyKey, 0, -1);
+            const readyUsers = readyUsersRaw.map((u) => JSON.parse(u));
+
+            //return this user is ready to play with all ready users
+            const readyUserIds = readyUsers.map((u) => u.userId);
+
+            // inform all users in this game room that this user is ready
+            readyUserIds.forEach((targetUserId) => {
+              const client = connectedUsers.get(targetUserId);
+
+              if (client?.readyState === WebSocket.OPEN) {
+                client.send(
+                  JSON.stringify({
+                    type: "game-ready",
+                    gameId,
+                    roomId,
+                    readyUsers,
+                  })
+                );
+              }
+            });
+
+            break;
+          }
+
+          case "score-update": {
+            break;
+          }
+
+          case "game-end": {
+            if (gameId === undefined || gameScore === undefined) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "gameId and gameScore are required",
+                })
+              );
+              break;
+            }
+
+            break;
+          }
+
+          case "leader-board": {
+            if (gameId === undefined) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "gameId is required",
+                })
+              );
+              break;
+            }
+
+            let score = 0;
+            const gameScoresKey = `user:${userId}:gameScores`;
+            const scoreStr = await redisClient.hget(gameScoresKey, gameId);
+
+            if (scoreStr) {
+              score = parseInt(scoreStr, 10);
+            }
+
+            ws.send(
+              JSON.stringify({
+                type: "leader-board-data",
+                gameId,
+                score,
+              })
+            );
+
+            break;
+          }
 
           default:
             ws.send(
