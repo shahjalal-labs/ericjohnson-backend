@@ -308,25 +308,20 @@ export function setupWebSocketServer(server: any) {
               },
             });
 
-            // Broadcast message to all room clients
-            roomUsers.get(roomId)?.forEach((client) => {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send(
-                  JSON.stringify({
-                    type: "new-message",
-                    message: messagePayload,
-                    roomId,
-                  })
-                );
-              }
-            });
-
-            // Send updated conversation list to receiver (if online)
+            //send message to only the receiver
             const target = connectedUsers.get(receiverId);
 
             if (target && target.readyState === WebSocket.OPEN) {
               const receiverConversations = await getConversationsForUser(
                 receiverId
+              );
+
+              target.send(
+                JSON.stringify({
+                  type: "new-message",
+                  message: messagePayload,
+                  roomId,
+                })
               );
 
               target.send(
