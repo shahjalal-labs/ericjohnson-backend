@@ -322,7 +322,13 @@ const myProfile = async (userId: string) => {
     },
   });
 
-  return { ...user, friendsCount };
+  const matchedCount = await prisma.match.count({
+    where: {
+      user1Id: userId,
+    },
+  });
+
+  return { ...user, friendsCount, matchedCount };
 };
 
 const updateProfileIntoDB = async (userId: string, userData: User) => {

@@ -1,6 +1,7 @@
 import ApiError from "../../../errors/ApiErrors";
 import redisClient from "../../../helpers/redis";
 import prisma from "../../../shared/prisma";
+import { matchServices } from "../match/match.service";
 import { sendNotification } from "../notifications/notification.services";
 
 const sendFriendRequest = async (user1Id: string, user2Id: string) => {
@@ -169,80 +170,6 @@ const deleteFriend = async (id: string) => {
   return;
 };
 
-const matchesUsers = async (userId: string) => {
-  const userInfo = await prisma.user.findUnique({ where: { id: userId } });
-  if (!userInfo) {
-    throw new ApiError(404, "User not found");
-  }
-
-  const redisGeoKey = "userLocations";
-  const radiusMile = userInfo.maxDistance || 50;
-  const radiusKm = radiusMile * 1.60934;
-
-  const nearbyRaw = (await redisClient.georadiusbymember(
-    redisGeoKey,
-    userId,
-    radiusKm,
-    "km",
-    "WITHDIST",
-    "WITHCOORD"
-  )) as any[];
-
-  if (!nearbyRaw || nearbyRaw.length === 0) return [];
-
-  const nearbyIds = nearbyRaw
-    .map((u: any) => u[0])
-    .filter((id: string) => id !== userId);
-
-  if (nearbyIds.length === 0) return [];
-
-  const matchUsers = await prisma.user.findMany({
-    where: {
-      id: { not: userId, in: nearbyIds },
-      gender: userInfo.interestedIn,
-      relationship: userInfo.relationship,
-      minAge: { gte: userInfo.minAge },
-      maxAge: { lte: userInfo.maxAge },
-      myEthnicity: { in: userInfo.ethinicity },
-      religiousBeliefs: { in: userInfo.religion },
-      intention: userInfo.intention,
-      interests: { hasSome: userInfo.interests },
-      politics: userInfo.politics,
-      languages: userInfo.languages,
-      height:
-        userInfo.height == null
-          ? undefined
-          : userInfo.gender === "Female"
-          ? { gte: userInfo.height }
-          : { lte: userInfo.height },
-      myChildren: userInfo.myChildren,
-      familyPlans: userInfo.familyPlans,
-    },
-    select: {
-      id: true,
-      fullName: true,
-      profileImage: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const matchedUsers = matchUsers.map((user) => {
-    const friendId = [userId, user.id].sort().join("_");
-    const existingFriendship = prisma.friend.findUnique({
-      where: { uniqueKey: friendId },
-    });
-    return {
-      ...user,
-      isFriend: !!existingFriendship,
-      isSendRequest: existingFriendship
-        ? existingFriendship.then((f) => f?.status === "Pending")
-        : false,
-    };
-  });
-
-  return matchedUsers;
-};
-
 export const friendServices = {
   sendFriendRequest,
   myFriends,
@@ -251,5 +178,4 @@ export const friendServices = {
   acceptRequest,
   removeRequest,
   deleteFriend,
-  matchesUsers,
 };

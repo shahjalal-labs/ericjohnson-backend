@@ -68,16 +68,6 @@ const deleteFriend = catchAsync(async (req, res) => {
   });
 });
 
-const matchesUsers = catchAsync(async (req, res) => {
-  const result = await friendServices.matchesUsers(req.user.id);
-  sendResponse(res, {
-    success: true,
-    statusCode: 200,
-    message: "Matches users have been retrieved successfully",
-    data: result,
-  });
-});
-
 export const friendControllers = {
   sendFriendRequest,
   myFriends,
@@ -86,5 +76,4 @@ export const friendControllers = {
   acceptRequest,
   removeRequest,
   deleteFriend,
-  matchesUsers,
 };

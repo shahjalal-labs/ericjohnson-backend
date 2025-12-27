@@ -4,10 +4,8 @@ import auth from "../../middlewares/auth";
 
 const router = express.Router();
 
-router.post("/create", auth(), matchControllers.createMatch);
-router.get("/my-matches", auth(), matchControllers.myMatches);
-router.get("/:id", matchControllers.getMatchById);
-router.patch("/:id", matchControllers.updateMatch);
-router.delete("/:id", matchControllers.deleteMatch);
+router.get("/matching-users", auth(), matchControllers.matchingUsers);
+router.get("/matched-me", auth(), matchControllers.matchedMe);
+router.delete("/:matchedId", auth(), matchControllers.deleteMatch);
 
 export const matchRoutes = router;

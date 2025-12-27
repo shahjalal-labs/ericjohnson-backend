@@ -1,6 +1,8 @@
+import ApiError from "../../../errors/ApiErrors";
+import redisClient from "../../../helpers/redis";
 import prisma from "../../../shared/prisma";
 
-const createMatch = async (userId: string, userIds: []) => {
+const createMatch = async (userId: string, userIds: string[]) => {
   if (!userIds || userIds.length === 0) return;
 
   const existingMatches = await prisma.match.findMany({
@@ -40,7 +42,85 @@ const createMatch = async (userId: string, userIds: []) => {
   return;
 };
 
-const myMatches = async (userId: string) => {
+const matchingUsers = async (userId: string) => {
+  const userInfo = await prisma.user.findUnique({ where: { id: userId } });
+  if (!userInfo) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const redisGeoKey = "userLocations";
+  const radiusMile = userInfo.maxDistance || 50;
+  const radiusKm = radiusMile * 1.60934;
+
+  const nearbyRaw = (await redisClient.georadiusbymember(
+    redisGeoKey,
+    userId,
+    radiusKm,
+    "km",
+    "WITHDIST",
+    "WITHCOORD"
+  )) as any[];
+
+  if (!nearbyRaw || nearbyRaw.length === 0) return [];
+
+  const nearbyIds = nearbyRaw
+    .map((u: any) => u[0])
+    .filter((id: string) => id !== userId);
+
+  if (nearbyIds.length === 0) return [];
+
+  const matchUsers = await prisma.user.findMany({
+    where: {
+      id: { not: userId, in: nearbyIds },
+      gender: userInfo.interestedIn,
+      relationship: userInfo.relationship,
+      minAge: { gte: userInfo.minAge },
+      maxAge: { lte: userInfo.maxAge },
+      myEthnicity: { in: userInfo.ethinicity },
+      religiousBeliefs: { in: userInfo.religion },
+      intention: userInfo.intention,
+      interests: { hasSome: userInfo.interests },
+      politics: userInfo.politics,
+      languages: userInfo.languages,
+      height:
+        userInfo.height == null
+          ? undefined
+          : userInfo.gender === "Female"
+          ? { gte: userInfo.height }
+          : { lte: userInfo.height },
+      myChildren: userInfo.myChildren,
+      familyPlans: userInfo.familyPlans,
+    },
+    select: {
+      id: true,
+      fullName: true,
+      profileImage: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const matchedUsers = matchUsers.map((user) => {
+    const friendId = [userId, user.id].sort().join("_");
+    const existingFriendship = prisma.friend.findUnique({
+      where: { uniqueKey: friendId },
+    });
+    return {
+      ...user,
+      isFriend: !!existingFriendship,
+      isSendRequest: existingFriendship
+        ? existingFriendship.then((f) => f?.status === "Pending")
+        : false,
+    };
+  });
+
+  const matchedUserIds: string[] = matchedUsers.map((u) => u.id);
+
+  await matchServices.createMatch(userId, matchedUserIds);
+
+  return matchedUsers;
+};
+
+const matchedMe = async (userId: string) => {
   const results = await prisma.match.findMany({
     where: {
       OR: [{ user1Id: userId }, { user2Id: userId }],
@@ -79,25 +159,18 @@ const myMatches = async (userId: string) => {
   });
 };
 
-const getMatchById = async (id: string) => {
-  const result = await prisma.match.findUnique({ where: { id } });
-  return result;
-};
-
-const updateMatch = async (id: string, data: any) => {
-  await prisma.match.update({ where: { id }, data });
-  return;
-};
-
-const deleteMatch = async (id: string) => {
-  await prisma.match.delete({ where: { id } });
+const deleteMatch = async (matchedId: string) => {
+  const match = await prisma.match.findUnique({ where: { id: matchedId } });
+  if (!match) {
+    throw new ApiError(404, "Match not found");
+  }
+  await prisma.match.delete({ where: { id: matchedId } });
   return;
 };
 
 export const matchServices = {
   createMatch,
-  myMatches,
-  getMatchById,
-  updateMatch,
+  matchingUsers,
+  matchedMe,
   deleteMatch,
 };

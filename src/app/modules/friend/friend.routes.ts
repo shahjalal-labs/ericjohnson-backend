@@ -22,6 +22,5 @@ router.delete(
   friendControllers.removeRequest
 );
 router.delete("/remove-friend/:id", auth(), friendControllers.deleteFriend);
-router.get("/matches-users", auth(), friendControllers.matchesUsers);
 
 export const friendRoutes = router;
