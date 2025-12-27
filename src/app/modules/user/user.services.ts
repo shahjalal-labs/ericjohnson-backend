@@ -172,9 +172,11 @@ const getSingleUserIntoDB = async (id: string, userId: string) => {
     role: user.role,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-    isFriend: !!isFriend,
-    friendCondition: friendCondition,
-    friendShipId: (friendInfo && friendInfo.id) || undefined,
+    friendStatus:
+      friendInfo && friendInfo.status === "Accepted"
+        ? "friends"
+        : friendCondition || null,
+    friendShipId: (friendInfo && friendInfo.id) || null,
   };
 };
 
