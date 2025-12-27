@@ -420,88 +420,88 @@ export function setupWebSocketServer(server: any) {
             break;
           }
 
-          case "update-location": {
-            if (
-              typeof latitude !== "number" ||
-              typeof longitude !== "number" ||
-              Number.isNaN(latitude) ||
-              Number.isNaN(longitude) ||
-              latitude < -90 ||
-              latitude > 90 ||
-              longitude < -180 ||
-              longitude > 180
-            ) {
-              ws.send(
-                JSON.stringify({
-                  type: "error",
-                  message: "Invalid latitude or longitude",
-                })
-              );
-              break;
-            }
+          // case "update-location": {
+          //   if (
+          //     typeof latitude !== "number" ||
+          //     typeof longitude !== "number" ||
+          //     Number.isNaN(latitude) ||
+          //     Number.isNaN(longitude) ||
+          //     latitude < -90 ||
+          //     latitude > 90 ||
+          //     longitude < -180 ||
+          //     longitude > 180
+          //   ) {
+          //     ws.send(
+          //       JSON.stringify({
+          //         type: "error",
+          //         message: "Invalid latitude or longitude",
+          //       })
+          //     );
+          //     break;
+          //   }
 
-            const redisGeoKey = "userLocations";
+          //   const redisGeoKey = "userLocations";
 
-            await redisClient.geoadd(redisGeoKey, longitude, latitude, userId);
+          //   await redisClient.geoadd(redisGeoKey, longitude, latitude, userId);
 
-            const matches = await getNearbyUsers(userId, 1);
-            const currentIds = matches.map((m: any) => m.id).sort(); // normalize order
+          //   const matches = await getNearbyUsers(userId, 1);
+          //   const currentIds = matches.map((m: any) => m.id).sort(); // normalize order
 
-            // get last match IDs
-            const lastMatches = lastMatchesMap.get(ws) ?? [];
-            const lastIds = [...lastMatches].sort();
+          //   // get last match IDs
+          //   const lastMatches = lastMatchesMap.get(ws) ?? [];
+          //   const lastIds = [...lastMatches].sort();
 
-            // check if IDs are different
-            const isDifferent =
-              currentIds.length !== lastIds.length ||
-              currentIds.some((id, i) => id !== lastIds[i]);
+          //   // check if IDs are different
+          //   const isDifferent =
+          //     currentIds.length !== lastIds.length ||
+          //     currentIds.some((id, i) => id !== lastIds[i]);
 
-            if (isDifferent) {
-              lastMatchesMap.set(ws, currentIds);
+          //   if (isDifferent) {
+          //     lastMatchesMap.set(ws, currentIds);
 
-              ws.send(
-                JSON.stringify({
-                  type: "matches",
-                  message: `You and ${matches.length} people are at the same location`,
-                  matches,
-                })
-              );
-            }
+          //     ws.send(
+          //       JSON.stringify({
+          //         type: "matches",
+          //         message: `You and ${matches.length} people are at the same location`,
+          //         matches,
+          //       })
+          //     );
+          //   }
 
-            // also update other matched users
-            for (const match of matches) {
-              const matchUserId = match.id;
-              const matchWs = connectedUsers.get(matchUserId);
+          //   // also update other matched users
+          //   for (const match of matches) {
+          //     const matchUserId = match.id;
+          //     const matchWs = connectedUsers.get(matchUserId);
 
-              if (matchWs && matchWs.readyState === WebSocket.OPEN) {
-                const theirMatches = await getNearbyUsers(matchUserId, 1);
-                const theirCurrentIds = theirMatches
-                  .map((m: any) => m.id)
-                  .sort();
+          //     if (matchWs && matchWs.readyState === WebSocket.OPEN) {
+          //       const theirMatches = await getNearbyUsers(matchUserId, 1);
+          //       const theirCurrentIds = theirMatches
+          //         .map((m: any) => m.id)
+          //         .sort();
 
-                const lastTheirMatches = lastMatchesMap.get(matchWs) ?? [];
-                const lastTheirIds = [...lastTheirMatches].sort();
+          //       const lastTheirMatches = lastMatchesMap.get(matchWs) ?? [];
+          //       const lastTheirIds = [...lastTheirMatches].sort();
 
-                const theirIsDifferent =
-                  theirCurrentIds.length !== lastTheirIds.length ||
-                  theirCurrentIds.some((id, i) => id !== lastTheirIds[i]);
+          //       const theirIsDifferent =
+          //         theirCurrentIds.length !== lastTheirIds.length ||
+          //         theirCurrentIds.some((id, i) => id !== lastTheirIds[i]);
 
-                if (theirIsDifferent) {
-                  lastMatchesMap.set(matchWs, theirCurrentIds);
+          //       if (theirIsDifferent) {
+          //         lastMatchesMap.set(matchWs, theirCurrentIds);
 
-                  matchWs.send(
-                    JSON.stringify({
-                      type: "matches",
-                      message: `You and ${theirMatches.length} people are at the same location`,
-                      matches: theirMatches,
-                    })
-                  );
-                }
-              }
-            }
+          //         matchWs.send(
+          //           JSON.stringify({
+          //             type: "matches",
+          //             message: `You and ${theirMatches.length} people are at the same location`,
+          //             matches: theirMatches,
+          //           })
+          //         );
+          //       }
+          //     }
+          //   }
 
-            break;
-          }
+          //   break;
+          // }
 
           default:
             ws.send(

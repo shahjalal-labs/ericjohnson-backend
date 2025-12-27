@@ -170,13 +170,6 @@ export const getNearbyUsers = async (userId: string, radiusKm: number = 1) => {
     where: { id: userId },
     select: {
       id: true,
-      // intent: {
-      //   select: {
-      //     intent: true,
-      //     transportCheckin: true,
-      //     journeyCheckin: true,
-      //   },
-      // },
     },
   });
 
@@ -204,16 +197,11 @@ export const getNearbyUsers = async (userId: string, radiusKm: number = 1) => {
   const matchedUsers = await prisma.user.findMany({
     where: {
       id: { in: nearbyIds },
-      // intent: {
-      //   transportCheckin: userInfo.intent?.transportCheckin ?? undefined,
-      //   journeyCheckin: userInfo.intent?.journeyCheckin ?? undefined,
-      // },
     },
     select: {
       id: true,
       fullName: true,
       profileImage: true,
-      // galleryImages: true,
     },
   });
 
