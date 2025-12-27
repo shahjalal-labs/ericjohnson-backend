@@ -1,10 +1,9 @@
-import { Request, Response } from "express";
 import catchAsync from "../../../shared/catchAsync";
 import sendResponse from "../../../shared/sendResponse";
 import { userService } from "./user.services";
 
 // register user
-const createUser = catchAsync(async (req: Request, res: Response) => {
+const createUser = catchAsync(async (req, res) => {
   const result = await userService.createUserIntoDB(req.body);
   sendResponse(res, {
     success: true,
@@ -26,8 +25,11 @@ const signupVerification = catchAsync(async (req, res) => {
 });
 
 //get single user
-const getSingleUser = catchAsync(async (req: Request, res: Response) => {
-  const user = await userService.getSingleUserIntoDB(req.params.id);
+const getSingleUser = catchAsync(async (req, res) => {
+  const user = await userService.getSingleUserIntoDB(
+    req.params.id,
+    req.user.id
+  );
   sendResponse(res, {
     success: true,
     statusCode: 200,

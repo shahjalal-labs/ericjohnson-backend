@@ -107,13 +107,20 @@ const signupVerification = async (payload: {
 };
 
 //get single user
-const getSingleUserIntoDB = async (id: string) => {
+const getSingleUserIntoDB = async (id: string, userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id },
   });
   if (!user) {
     throw new ApiError(404, "user not found!");
   }
+
+  const friendStatus = await prisma.friend.findUnique({
+    where: {
+      uniqueKey: [userId, id].sort().join("_"),
+    },
+  });
+
   return {
     id: user.id,
     email: user.email,
@@ -151,9 +158,11 @@ const getSingleUserIntoDB = async (id: string) => {
     isEthnicityBreak: user.isEthnicityBreak,
     religion: user.religion,
     isReligionBreak: user.isReligionBreak,
+    interests: user.interests,
     role: user.role,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    friendStatus: friendStatus ? friendStatus.status : "not_friends",
   };
 };
 
