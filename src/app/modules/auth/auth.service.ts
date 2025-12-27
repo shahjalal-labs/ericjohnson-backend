@@ -16,7 +16,7 @@ import { emailQueue } from "../../../queues/emailQueue";
 const loginUserIntoDB = async (payload: {
   email: string;
   password: string;
-  fcmToken: string;
+  fcmToken?: string;
 }) => {
   const user = await prisma.user.findUnique({
     where: {
@@ -78,7 +78,7 @@ const loginUserIntoDB = async (payload: {
 const authLogin = async (payload: {
   email: string;
   fullName: string;
-  fcmToken: string;
+  fcmToken?: string;
   appleId?: string;
 }) => {
   const user = await prisma.user.findFirst({
@@ -119,7 +119,6 @@ const authLogin = async (payload: {
   const newUser = await prisma.user.create({
     data: {
       email: payload.email,
-      phoneNumber: "",
       fullName: payload.fullName,
       password: "123456",
       fcmToken: payload.fcmToken,
@@ -133,11 +132,11 @@ const authLogin = async (payload: {
     config.jwt.expires_in as string
   );
 
-  // await sendNotification(
-  //   newUser.id,
-  //   "Your account create has been successfully done!",
-  //   "Welcome!"
-  // );
+  await sendNotification(
+    newUser.id,
+    "Your account create has been successfully done!",
+    "Welcome!"
+  );
 
   return {
     accessToken,

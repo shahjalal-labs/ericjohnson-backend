@@ -8,8 +8,16 @@ import { parseBodyData } from "../../middlewares/parseBodyData";
 
 const router = express.Router();
 
-router.post("/login", authController.loginUser);
-router.post("/auth-login", authController.authLogin);
+router.post(
+  "/login",
+  validateRequest(authValidation.loginSchema),
+  authController.loginUser
+);
+router.post(
+  "/auth-login",
+  validateRequest(authValidation.authLoginSchema),
+  authController.authLogin
+);
 router.get("/profile", auth(), authController.myProfile);
 router.post(
   "/user-location",
