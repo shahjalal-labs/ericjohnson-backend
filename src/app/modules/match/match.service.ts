@@ -76,7 +76,7 @@ const matchingUsers = async (userId: string) => {
       relationship: userInfo.relationship,
       minAge: { gte: userInfo.minAge },
       maxAge: { lte: userInfo.maxAge },
-      myEthnicity: { in: userInfo.ethinicity },
+      ethinicity: { hasSome: userInfo.ethinicity },
       religiousBeliefs: { in: userInfo.religion },
       intention: userInfo.intention,
       interests: { hasSome: userInfo.interests },
