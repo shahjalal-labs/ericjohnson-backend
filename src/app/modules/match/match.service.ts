@@ -77,9 +77,13 @@ const matchingUsers = async (userId: string) => {
       minAge: { gte: userInfo.minAge },
       maxAge: { lte: userInfo.maxAge },
       ethinicity: { hasSome: userInfo.ethinicity },
-      religiousBeliefs: { in: userInfo.religion },
-      intention: userInfo.intention,
+      religion: { hasSome: userInfo.religion },
+      OR: [
+        { myEthnicity: { in: userInfo.ethinicity } },
+        { religiousBeliefs: { in: userInfo.religion } },
+      ],
       interests: { hasSome: userInfo.interests },
+      intention: userInfo.intention,
       politics: userInfo.politics,
       languages: userInfo.languages,
       height:
