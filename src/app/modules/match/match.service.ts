@@ -81,6 +81,7 @@ const matchingUsers = async (userId: string) => {
           OR: [
             { myEthnicity: { in: userInfo.ethinicity } },
             { ethinicity: { hasSome: userInfo.ethinicity } },
+            { myEthnicity: userInfo.myEthnicity },
           ],
         },
         {
