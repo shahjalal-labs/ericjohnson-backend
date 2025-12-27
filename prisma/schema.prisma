@@ -152,25 +152,6 @@ model Notification {
 enum FriendStatus {
   Pending
   Accepted
-  Rejected
-}
-
-enum Intents {
-  Networking
-  Dating
-  Just_Chat
-}
-
-enum Tcheck {
-  Train_Line
-  Route
-  Station
-}
-
-enum Jcheck {
-  Right_Now
-  One_Two
-  Four_Five
 }
 
 enum UserStatus {
