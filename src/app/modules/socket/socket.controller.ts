@@ -123,6 +123,7 @@ export function setupWebSocketServer(server: any) {
           receiverId,
           content,
           fileUrl,
+          chatRoomId,
           longitude,
           latitude,
           gameId,
@@ -424,6 +425,80 @@ export function setupWebSocketServer(server: any) {
               })
             );
 
+            break;
+          }
+
+          case "unread-reset": {
+            const unreadKey = `room:${chatRoomId}:unread:${userId}`;
+            await redisClient.set(unreadKey, "0");
+
+            const conversations = await prisma.room.findMany({
+              where: {
+                OR: [{ user1Id: userId }, { user2Id: userId }],
+              },
+              orderBy: { updatedAt: "desc" },
+              include: {
+                user1: {
+                  select: { id: true, fullName: true, profileImage: true },
+                },
+                user2: {
+                  select: { id: true, fullName: true, profileImage: true },
+                },
+              },
+            });
+
+            const connectedUserIds = Array.from(connectedUsers.keys()).filter(
+              (id) => !!id
+            );
+
+            const formattedConversations = await Promise.all(
+              conversations.map(async (room) => {
+                const partner =
+                  room.user1Id === userId ? room.user2 : room.user1;
+                const isActive = connectedUserIds.includes(
+                  partner?.id as string
+                );
+
+                const redisKey = `room:${room.id}:messages`;
+                const unreadKey = `room:${room.id}:unread:${userId}`;
+                const latestRaw = await redisClient.lrange(redisKey, -1, -1);
+
+                const latestMsg =
+                  latestRaw.length > 0 ? JSON.parse(latestRaw[0]) : null;
+
+                // Get unread count from Redis
+                const unreadCountStr = await redisClient.get(unreadKey);
+                const unreadCount = parseInt(unreadCountStr || "0", 10);
+
+                const latestMessage = latestMsg
+                  ? {
+                      content:
+                        latestMsg.content ??
+                        (latestMsg.fileUrl ? "sent file" : null),
+                      createdAt: latestMsg.createdAt,
+                    }
+                  : null;
+
+                return {
+                  roomId: room.id,
+                  partner: {
+                    id: partner?.id,
+                    fullName: partner?.fullName,
+                    profileImage: partner?.profileImage,
+                    isActive,
+                  },
+                  lastMessage: latestMessage,
+                  unreadCount,
+                };
+              })
+            );
+
+            ws.send(
+              JSON.stringify({
+                type: "conversation",
+                conversations: formattedConversations,
+              })
+            );
             break;
           }
 
