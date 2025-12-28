@@ -586,6 +586,7 @@ export function setupWebSocketServer(server: any) {
           // }
 
           //for host to invite players
+
           case "invite-player": {
             if (!gameId) {
               ws.send(
@@ -617,6 +618,7 @@ export function setupWebSocketServer(server: any) {
               playersKey,
               JSON.stringify({
                 userId,
+                hostId: userId,
                 avatar,
                 userName,
                 status: "ready",
@@ -626,26 +628,55 @@ export function setupWebSocketServer(server: any) {
 
             const inviteLink = `https://playspark.smtsigma.com/game?gameId=${gameId}&roomId=${roomId}&hostId=${userId}`;
 
-            userIds.forEach((uid: string) => {
-              const client = connectedUsers.get(uid);
+            const invitePayload = {
+              gameId,
+              roomId,
+              hostId: userId,
+              inviteLink,
+              invitedAt: new Date().toISOString(),
+            };
+
+            for (const invitedUserId of userIds) {
+              const inviteKey = `user:${invitedUserId}:invites`;
+              await redisClient.rpush(inviteKey, JSON.stringify(invitePayload));
+
+              // 🔔 Send realtime invite if online
+              const client = connectedUsers.get(invitedUserId);
               if (client?.readyState === WebSocket.OPEN) {
                 client.send(
                   JSON.stringify({
                     type: "invite-link",
-                    gameId,
-                    roomId,
-                    inviteLink,
+                    ...invitePayload,
                   })
                 );
               }
-            });
+            }
+
+            const playersRaw = await redisClient.lrange(playersKey, 0, -1);
+            const players = playersRaw.map((item) => JSON.parse(item));
 
             ws.send(
               JSON.stringify({
-                type: "invite-link",
+                type: "leader-board-data",
                 gameId,
-                roomId,
-                inviteLink,
+                roomId: roomId,
+                players,
+              })
+            );
+
+            break;
+          }
+
+          case "get-invited-games": {
+            const inviteKey = `user:${userId}:invites`;
+
+            const invitesRaw = await redisClient.lrange(inviteKey, 0, -1);
+            const invites = invitesRaw.map((i) => JSON.parse(i));
+
+            ws.send(
+              JSON.stringify({
+                type: "invited-games",
+                games: invites,
               })
             );
 
@@ -689,6 +720,7 @@ export function setupWebSocketServer(server: any) {
               playersKey,
               JSON.stringify({
                 userId,
+                hostId,
                 avatar,
                 userName,
                 status: "ready",
