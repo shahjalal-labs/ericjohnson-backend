@@ -56,7 +56,7 @@ const updateProfileSchema = z
     visibleFamilyPlans: z.boolean(),
     vices: VicesSchema.optional(),
     visibleVices: z.boolean(),
-    maxDistance: z.number().int().min(1).max(1000),
+    maxDistance: z.number().int().min(1).max(3963),
     interestedIn: z.enum(["Male", "Female", "Other"]),
     minAge: z.number().int().min(18),
     maxAge: z.number().int().max(100),
