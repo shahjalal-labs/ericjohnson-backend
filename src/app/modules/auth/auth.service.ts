@@ -311,7 +311,7 @@ const myProfile = async (userId: string) => {
 
   const matchedCount = await prisma.match.count({
     where: {
-      user1Id: userId,
+      OR: [{ user1Id: userId }, { user2Id: userId }],
     },
   });
 

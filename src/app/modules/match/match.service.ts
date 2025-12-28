@@ -72,10 +72,10 @@ const matchingUsers = async (userId: string) => {
   const matchUsers = await prisma.user.findMany({
     where: {
       id: { not: userId, in: nearbyIds },
-      gender: userInfo.interestedIn,
-      relationship: userInfo.relationship,
-      minAge: { gte: userInfo.minAge },
-      maxAge: { lte: userInfo.maxAge },
+      gender: userInfo.interestedIn, //ok
+      relationship: userInfo.relationship, //ok
+      minAge: { gte: userInfo.minAge }, //ok
+      maxAge: { lte: userInfo.maxAge }, //ok
       AND: [
         {
           OR: [
@@ -90,17 +90,17 @@ const matchingUsers = async (userId: string) => {
             { religion: { hasSome: userInfo.religion } },
           ],
         },
-      ],
-      interests: { hasSome: userInfo.interests },
-      intention: userInfo.intention,
-      politics: userInfo.politics,
-      languages: userInfo.languages,
+      ], //ok
+      interests: { hasSome: userInfo.interests }, //ok
+      intention: userInfo.intention, //ok "prefer not to say"
+      politics: userInfo.politics, //ok
+      languages: userInfo.languages, //ok
       height:
         userInfo.height == null
           ? undefined
           : userInfo.gender === "Female"
           ? { gte: userInfo.height }
-          : { lte: userInfo.height },
+          : { lte: userInfo.height }, //ok
       myChildren: userInfo.myChildren,
       familyPlans: userInfo.familyPlans,
     },
