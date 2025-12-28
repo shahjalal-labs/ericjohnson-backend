@@ -812,6 +812,10 @@ export function setupWebSocketServer(server: any) {
               }
             });
 
+            //delete stored invites
+            const inviteKey = `user:${userId}:invites`;
+            await redisClient.del(inviteKey);
+
             break;
           }
 
@@ -909,17 +913,52 @@ export function setupWebSocketServer(server: any) {
               break;
             }
 
-            const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
             const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
-
-            const hostId = await redisClient.get(hostKey);
 
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
             const players = playersRaw.map((p) => JSON.parse(p));
 
             // Host leaving
-            if (userId === hostId) {
-              // Mark all as finished
+
+            const updatedPlayers = players.map((p) =>
+              p.userId === userId ? { ...p, status: "leave" } : p
+            );
+
+            // Broadcast updated players
+            updatedPlayers.forEach((p) => {
+              const client = connectedUsers.get(p.userId);
+              if (client?.readyState === WebSocket.OPEN) {
+                client.send(
+                  JSON.stringify({
+                    type: "leader-board-data",
+                    gameId,
+                    roomId: incommingRoomId,
+                    players: updatedPlayers,
+                  })
+                );
+              }
+            });
+            break;
+          }
+
+          //if only one player is left, end the game
+          case "end-game": {
+            if (!gameId || !incommingRoomId) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "gameId & roomId required",
+                })
+              );
+              break;
+            }
+
+            const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
+            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
+            const playersRaw = await redisClient.lrange(playersKey, 0, -1);
+            const players = playersRaw.map((p) => JSON.parse(p));
+
+            if (players.length === 1) {
               const finishedPlayers = players.map((p) => ({
                 ...p,
                 status: "finished",
@@ -982,27 +1021,7 @@ export function setupWebSocketServer(server: any) {
                 `gameRoom:${incommingRoomId}:${gameId}:scoreUpdates`
               );
               break;
-            } else {
-              const updatedPlayers = players.map((p) =>
-                p.userId === userId ? { ...p, status: "leave" } : p
-              );
-
-              // Broadcast updated players
-              updatedPlayers.forEach((p) => {
-                const client = connectedUsers.get(p.userId);
-                if (client?.readyState === WebSocket.OPEN) {
-                  client.send(
-                    JSON.stringify({
-                      type: "leader-board-data",
-                      gameId,
-                      roomId: incommingRoomId,
-                      players: updatedPlayers,
-                    })
-                  );
-                }
-              });
             }
-            break;
           }
 
           default:
