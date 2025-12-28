@@ -739,6 +739,7 @@ export function setupWebSocketServer(server: any) {
           //   break;
           // }
 
+          //for host to invite players
           case "invite-player": {
             if (!gameId) {
               ws.send(
@@ -770,6 +771,8 @@ export function setupWebSocketServer(server: any) {
               playersKey,
               JSON.stringify({
                 userId,
+                avatar,
+                userName,
                 status: "ready",
                 score: 0,
               })
@@ -789,6 +792,7 @@ export function setupWebSocketServer(server: any) {
             break;
           }
 
+          //for player ready status
           case "user-ready": {
             if (!gameId || !incommingRoomId) {
               ws.send(
