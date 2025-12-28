@@ -778,7 +778,21 @@ export function setupWebSocketServer(server: any) {
               })
             );
 
-            const inviteLink = `https://playspark.smtsigma.com/game?gameId=${gameId}&roomId=${roomId}`;
+            const inviteLink = `https://playspark.smtsigma.com/game?gameId=${gameId}&roomId=${roomId}&hostId=${userId}`;
+
+            userIds.forEach((uid: string) => {
+              const client = connectedUsers.get(uid);
+              if (client?.readyState === WebSocket.OPEN) {
+                client.send(
+                  JSON.stringify({
+                    type: "invite-link",
+                    gameId,
+                    roomId,
+                    inviteLink,
+                  })
+                );
+              }
+            });
 
             ws.send(
               JSON.stringify({
@@ -848,7 +862,6 @@ export function setupWebSocketServer(server: any) {
                     type: "leader-board-data",
                     gameId,
                     roomId: incommingRoomId,
-                    hostId,
                     players,
                   })
                 );
@@ -907,7 +920,6 @@ export function setupWebSocketServer(server: any) {
                     type: "leader-board-data",
                     gameId,
                     roomId: incommingRoomId,
-                    hostId,
                     players: updatedPlayers,
                   })
                 );
