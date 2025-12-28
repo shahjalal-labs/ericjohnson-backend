@@ -342,6 +342,25 @@ const updateProfileImages = async (
   if (!user) {
     throw new ApiError(404, "User not found for edit user");
   }
+
+  const EARTH_RADIUS_MILES = 3959;
+
+  if (userData.maxDistance) {
+    const maxDistanceRad = userData.maxDistance / EARTH_RADIUS_MILES;
+
+    if (
+      maxDistanceRad < 1 / EARTH_RADIUS_MILES ||
+      maxDistanceRad > 3963 / EARTH_RADIUS_MILES
+    ) {
+      throw new ApiError(
+        400,
+        `Max distance must be between ${1 / EARTH_RADIUS_MILES} and ${
+          3963 / EARTH_RADIUS_MILES
+        } radians`
+      );
+    }
+  }
+
   const processImages = async (files?: Express.Multer.File[]) => {
     if (!files || files.length === 0) return [];
     return Promise.all(
