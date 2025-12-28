@@ -5,7 +5,6 @@ import { verifyWebSocketToken } from "./socket.service";
 import { parse } from "url";
 import { CustomWebSocket } from "./socket.interface";
 import redisClient from "../../../helpers/redis";
-import { getNearbyUsers } from "../auth/auth.service";
 import { v4 as uuidv4 } from "uuid";
 
 const roomUsers = new Map<string, Set<WebSocket>>();
@@ -127,8 +126,12 @@ export function setupWebSocketServer(server: any) {
           longitude,
           latitude,
           gameId,
+          roomId: incommingRoomId,
           gameScore,
           userIds,
+          avatar,
+          userName,
+          score,
         } = JSON.parse(message.toString());
 
         const getConversationsForUser = async (targetUserId: string) => {
@@ -528,84 +531,160 @@ export function setupWebSocketServer(server: any) {
             }
 
             const roomId = uuidv4();
+            const hostKey = `gameRoom:${roomId}:${gameId}:host`;
+            const playersKey = `gameRoom:${roomId}:${gameId}:players`;
 
-            //store roomId and gameId in redis for future reference
-            const gameRoomKey = `gameRoom:${roomId}`;
-            await redisClient.set(gameRoomKey, gameId);
+            // ✅ store hostId at room level
+            await redisClient.set(hostKey, userId);
 
-            const inviteLink = `https://playspark.smtsigma.com/game?gameId=${gameId}&room=${roomId}`;
-            const inviteMessage = {
-              content: `Join me in playing! Click here: ${inviteLink}`,
-            };
+            // ✅ host joins as first ready player
+            await redisClient.rpush(
+              playersKey,
+              JSON.stringify({
+                userId,
+                status: "ready",
+                score: 0,
+              })
+            );
+
+            const inviteLink = `https://playspark.smtsigma.com/game?gameId=${gameId}&roomId=${roomId}`;
 
             ws.send(
               JSON.stringify({
                 type: "invite-link",
                 gameId,
+                roomId,
                 inviteLink,
-                message: inviteMessage,
               })
             );
 
             break;
           }
 
-          case "game-start": {
-            if (gameId === undefined) {
+          case "user-ready": {
+            if (!gameId || !incommingRoomId) {
               ws.send(
                 JSON.stringify({
                   type: "error",
-                  message: "gameId is required",
-                })
-              );
-              break;
-            }
-            if (roomId === undefined) {
-              ws.send(
-                JSON.stringify({
-                  type: "error",
-                  message: "roomId is required",
+                  message: "gameId & roomId required",
                 })
               );
               break;
             }
 
-            //create a object to user is ready to play
-            const readyObject = {
-              userId,
-              status: "ready",
-            };
+            const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
+            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
 
-            const gameReadyKey = `gameRoom:${roomId}:readyUsers`;
+            const hostId = await redisClient.get(hostKey);
+            if (!hostId) {
+              ws.send(
+                JSON.stringify({ type: "error", message: "Invalid room" })
+              );
+              break;
+            }
 
-            // Remove previous entry for this user (idempotent)
-            const existing = await redisClient.lrange(gameReadyKey, 0, -1);
+            // remove existing entry
+            const existing = await redisClient.lrange(playersKey, 0, -1);
             for (const item of existing) {
               if (JSON.parse(item).userId === userId) {
-                await redisClient.lrem(gameReadyKey, 1, item);
+                await redisClient.lrem(playersKey, 1, item);
                 break;
               }
             }
-            await redisClient.rpush(gameReadyKey, JSON.stringify(readyObject));
 
-            //show all users in this game room that this user is ready
-            const readyUsersRaw = await redisClient.lrange(gameReadyKey, 0, -1);
-            const readyUsers = readyUsersRaw.map((u) => JSON.parse(u));
+            // add / update player
+            await redisClient.rpush(
+              playersKey,
+              JSON.stringify({
+                userId,
+                avatar,
+                userName,
+                status: "ready",
+                score: 0,
+              })
+            );
 
-            //return this user is ready to play with all ready users
-            const readyUserIds = readyUsers.map((u) => u.userId);
+            const playersRaw = await redisClient.lrange(playersKey, 0, -1);
+            const players = playersRaw.map((item) => JSON.parse(item));
 
-            // inform all users in this game room that this user is ready
-            readyUserIds.forEach((targetUserId) => {
-              const client = connectedUsers.get(targetUserId);
-
+            // broadcast
+            players.forEach((p) => {
+              const client = connectedUsers.get(p.userId);
               if (client?.readyState === WebSocket.OPEN) {
                 client.send(
                   JSON.stringify({
-                    type: "game-ready",
+                    type: "leader-board-data",
                     gameId,
-                    roomId,
-                    readyUsers,
+                    roomId: incommingRoomId,
+                    hostId,
+                    players,
+                  })
+                );
+              }
+            });
+
+            break;
+          }
+
+          //only host can start the game
+          case "start-game": {
+            if (!gameId || !incommingRoomId) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "gameId & roomId required",
+                })
+              );
+              break;
+            }
+
+            const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
+            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
+
+            const hostId = await redisClient.get(hostKey);
+
+            // 🔒 host-only guard
+            if (userId !== hostId) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "Only host can start the game",
+                })
+              );
+              break;
+            }
+
+            const playersRaw = await redisClient.lrange(playersKey, 0, -1);
+            const updatedPlayers = playersRaw.map((u) => {
+              const p = JSON.parse(u);
+              return { ...p, status: "playing" };
+            });
+
+            // replace list
+            await redisClient.del(playersKey);
+            for (const p of updatedPlayers) {
+              await redisClient.rpush(playersKey, JSON.stringify(p));
+            }
+
+            // broadcast
+            updatedPlayers.forEach((p) => {
+              const client = connectedUsers.get(p.userId);
+              if (client?.readyState === WebSocket.OPEN) {
+                client.send(
+                  JSON.stringify({
+                    type: "leader-board-data",
+                    gameId,
+                    roomId: incommingRoomId,
+                    hostId,
+                    players: updatedPlayers,
+                  })
+                );
+
+                client.send(
+                  JSON.stringify({
+                    type: "game-starting",
+                    gameId,
+                    roomId: incommingRoomId,
                   })
                 );
               }
@@ -615,49 +694,173 @@ export function setupWebSocketServer(server: any) {
           }
 
           case "score-update": {
-            break;
-          }
-
-          case "game-end": {
-            if (gameId === undefined || gameScore === undefined) {
+            if (!gameId || !incommingRoomId) {
               ws.send(
                 JSON.stringify({
                   type: "error",
-                  message: "gameId and gameScore are required",
+                  message: "gameId & roomId required",
                 })
               );
               break;
             }
 
-            break;
-          }
+            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
 
-          case "leader-board": {
-            if (gameId === undefined) {
+            const playersRaw = await redisClient.lrange(playersKey, 0, -1);
+            if (playersRaw.length === 0) {
               ws.send(
                 JSON.stringify({
                   type: "error",
-                  message: "gameId is required",
+                  message: "No players found",
                 })
               );
               break;
             }
 
-            let score = 0;
-            const gameScoresKey = `user:${userId}:gameScores`;
-            const scoreStr = await redisClient.hget(gameScoresKey, gameId);
+            let updatedPlayers = [];
+            let scoreUpdated = false;
 
-            if (scoreStr) {
-              score = parseInt(scoreStr, 10);
+            for (const item of playersRaw) {
+              const player = JSON.parse(item);
+
+              if (player.userId === userId) {
+                if (player.status !== "playing") {
+                  ws.send(
+                    JSON.stringify({
+                      type: "error",
+                      message: "Game not started",
+                    })
+                  );
+                  return;
+                }
+
+                player.score = (player.score || 0) + score;
+                scoreUpdated = true;
+              }
+
+              updatedPlayers.push(player);
             }
 
-            ws.send(
-              JSON.stringify({
-                type: "leader-board-data",
-                gameId,
-                score,
-              })
-            );
+            if (!scoreUpdated) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "Player not found in room",
+                })
+              );
+              break;
+            }
+
+            // 🔁 replace list
+            await redisClient.del(playersKey);
+            for (const p of updatedPlayers) {
+              await redisClient.rpush(playersKey, JSON.stringify(p));
+            }
+
+            // 📢 broadcast updated leaderboard
+            updatedPlayers.forEach((p) => {
+              const client = connectedUsers.get(p.userId);
+              if (client?.readyState === WebSocket.OPEN) {
+                client.send(
+                  JSON.stringify({
+                    type: "leader-board-data",
+                    gameId,
+                    roomId: incommingRoomId,
+                    players: updatedPlayers,
+                  })
+                );
+              }
+            });
+
+            break;
+          }
+
+          // User leaves the game
+          case "leave-game": {
+            if (!gameId || !incommingRoomId) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "gameId & roomId required",
+                })
+              );
+              break;
+            }
+
+            const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
+            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
+
+            const hostId = await redisClient.get(hostKey);
+
+            const playersRaw = await redisClient.lrange(playersKey, 0, -1);
+            const players = playersRaw.map((p) => JSON.parse(p));
+
+            // Host leaving
+            if (userId === hostId) {
+              if (players.length > 0) {
+                // Mark all as finished
+                const finishedPlayers = players.map((p) => ({
+                  ...p,
+                  status: "finished",
+                }));
+
+                await redisClient.del(playersKey);
+                for (const p of finishedPlayers) {
+                  await redisClient.rpush(playersKey, JSON.stringify(p));
+                }
+
+                // Broadcast
+                finishedPlayers.forEach((p) => {
+                  const client = connectedUsers.get(p.userId);
+                  if (client?.readyState === WebSocket.OPEN) {
+                    client.send(
+                      JSON.stringify({
+                        type: "leader-board-data",
+                        gameId,
+                        roomId: incommingRoomId,
+                        players: finishedPlayers,
+                      })
+                    );
+
+                    client.send(
+                      JSON.stringify({
+                        type: "game-end",
+                        gameId,
+                        roomId: incommingRoomId,
+                      })
+                    );
+                  }
+                });
+              }
+
+              // Delete host key
+              await redisClient.del(hostKey);
+            } else {
+              // Non-host leaving: remove only this user
+              const remainingPlayers = players.filter(
+                (p) => p.userId !== userId
+              );
+
+              await redisClient.del(playersKey);
+              for (const p of remainingPlayers) {
+                await redisClient.rpush(playersKey, JSON.stringify(p));
+              }
+
+              // Broadcast updated players
+              remainingPlayers.forEach((p) => {
+                const client = connectedUsers.get(p.userId);
+                if (client?.readyState === WebSocket.OPEN) {
+                  client.send(
+                    JSON.stringify({
+                      type: "leader-board-data",
+                      gameId,
+                      roomId: incommingRoomId,
+                      players: remainingPlayers,
+                    })
+                  );
+                }
+              });
+            }
 
             break;
           }
