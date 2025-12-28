@@ -73,7 +73,7 @@ export function setupWebSocketServer(server: any) {
           redisClient.get(unreadKey),
         ]);
 
-        const unreadCount = parseInt(unreadCountStr || "0", 30);
+        const unreadCount = parseInt(unreadCountStr || "0", 10);
         let latestMessage = null;
 
         if (redisRaw.length > 0) {
@@ -127,7 +127,6 @@ export function setupWebSocketServer(server: any) {
           latitude,
           gameId,
           roomId: incommingRoomId,
-          gameScore,
           userIds,
           avatar,
           userName,
@@ -166,7 +165,7 @@ export function setupWebSocketServer(server: any) {
 
               // Get unread count from Redis (fallback to 0 if not found)
               const unreadCountStr = await redisClient.get(unreadKey);
-              const unreadCount = parseInt(unreadCountStr || "0", 30);
+              const unreadCount = parseInt(unreadCountStr || "0", 10);
 
               // Determine content
               const lastMessageContent =
@@ -204,48 +203,47 @@ export function setupWebSocketServer(server: any) {
               );
             }
 
+            // Ensure consistent user order for the room
             const [u1, u2] = [userId, receiverId].sort();
 
-            let room = await prisma.room.upsert({
-              where: {
-                user1Id_user2Id: {
-                  user1Id: u1,
-                  user2Id: u2,
-                },
-              },
+            const room = await prisma.room.upsert({
+              where: { user1Id_user2Id: { user1Id: u1, user2Id: u2 } },
               update: {},
               create: { user1Id: u1, user2Id: u2 },
             });
 
             roomId = room.id;
 
+            // Reset unread count for this user
             const unreadKey = `room:${roomId}:unread:${userId}`;
             await redisClient.set(unreadKey, "0");
 
+            // Manage WebSocket connections for the room
+            if (!roomUsers.has(roomId)) roomUsers.set(roomId, new Set());
+            roomUsers.get(roomId)?.add(ws);
+
+            // Remove ws from other room sets
             roomUsers.forEach((clients, key) => {
-              if (clients.has(ws)) {
+              if (key !== roomId && clients.has(ws)) {
                 clients.delete(ws);
                 if (clients.size === 0) roomUsers.delete(key);
               }
             });
 
-            if (!roomUsers.has(roomId)) {
-              roomUsers.set(roomId, new Set());
-            }
-            roomUsers.get(roomId)?.add(ws);
-
+            // Fetch last 30 messages
             const redisKey = `room:${roomId}:messages`;
             const redisRaw = await redisClient.lrange(redisKey, -30, -1);
-            const messages = redisRaw.reverse().map((msg) => JSON.parse(msg));
+            const messages = redisRaw.map((msg) => JSON.parse(msg)); // newest last
 
             ws.send(
               JSON.stringify({
                 type: "past-messages",
                 roomId,
-                messages: messages,
+                messages,
               })
             );
 
+            // Send conversation list
             const senderConversations = await getConversationsForUser(userId);
             ws.send(
               JSON.stringify({
@@ -283,52 +281,42 @@ export function setupWebSocketServer(server: any) {
 
             const messagePayload = {
               content,
-              user1Id: userId,
-              user2Id: receiverId,
+              senderId: userId,
+              receiverId,
               roomId,
-              fileUrl: fileUrl ?? [""],
+              fileUrl: fileUrl ?? [],
               createdAt: new Date().toISOString(),
             };
 
             const redisKey = `room:${roomId}:messages`;
             await redisClient.rpush(redisKey, JSON.stringify(messagePayload));
+
+            // Increment unread for the receiver
             const unreadKey = `room:${roomId}:unread:${receiverId}`;
             await redisClient.incr(unreadKey);
-            const count = await redisClient.llen(redisKey);
 
-            if (count >= 30) {
-              const messagesToSaveRaw = await redisClient.lrange(
+            // Save older messages to DB if > 30
+            const count = await redisClient.llen(redisKey);
+            if (count > 30) {
+              const oldMessagesRaw = await redisClient.lrange(
                 redisKey,
                 0,
-                14
+                count - 16
               );
-              const messagesToSave = messagesToSaveRaw.map((msg) =>
-                JSON.parse(msg)
-              );
-
-              await prisma.message.createMany({ data: messagesToSave });
-
-              await redisClient.ltrim(redisKey, 15, -1);
+              const oldMessages = oldMessagesRaw.map((msg) => JSON.parse(msg));
+              await prisma.message.createMany({ data: oldMessages });
+              await redisClient.ltrim(redisKey, count - 15, -1);
             }
 
-            // Update the room's updatedAt
+            // Update room's updatedAt
             await prisma.room.update({
-              where: {
-                id: roomId,
-              },
-              data: {
-                updatedAt: new Date(),
-              },
+              where: { id: roomId },
+              data: { updatedAt: new Date() },
             });
 
-            //send message to only the receiver
+            // Send message to receiver if online
             const target = connectedUsers.get(receiverId);
-
-            if (target && target.readyState === WebSocket.OPEN) {
-              const receiverConversations = await getConversationsForUser(
-                receiverId
-              );
-
+            if (target?.readyState === WebSocket.OPEN) {
               target.send(
                 JSON.stringify({
                   type: "new-message",
@@ -337,6 +325,9 @@ export function setupWebSocketServer(server: any) {
                 })
               );
 
+              const receiverConversations = await getConversationsForUser(
+                receiverId
+              );
               target.send(
                 JSON.stringify({
                   type: "conversation",
@@ -345,6 +336,7 @@ export function setupWebSocketServer(server: any) {
               );
             }
 
+            // Update sender conversations
             const senderConversations = await getConversationsForUser(userId);
             ws.send(
               JSON.stringify({
@@ -373,7 +365,7 @@ export function setupWebSocketServer(server: any) {
             });
 
             const connectedUserIds = Array.from(connectedUsers.keys()).filter(
-              (id) => !!id
+              Boolean
             );
 
             const formattedConversations = await Promise.all(
@@ -386,20 +378,22 @@ export function setupWebSocketServer(server: any) {
 
                 const redisKey = `room:${room.id}:messages`;
                 const unreadKey = `room:${room.id}:unread:${userId}`;
+
+                // Latest message
                 const latestRaw = await redisClient.lrange(redisKey, -1, -1);
+                const latestMsg = latestRaw.length
+                  ? JSON.parse(latestRaw[0])
+                  : null;
 
-                const latestMsg =
-                  latestRaw.length > 0 ? JSON.parse(latestRaw[0]) : null;
-
-                // Get unread count from Redis
+                // Unread count
                 const unreadCountStr = await redisClient.get(unreadKey);
-                const unreadCount = parseInt(unreadCountStr || "0", 30);
+                const unreadCount = parseInt(unreadCountStr || "0", 10);
 
-                const latestMessage = latestMsg
+                const lastMessage = latestMsg
                   ? {
                       content:
-                        latestMsg.content ??
-                        (latestMsg.fileUrl ? "sent file" : null),
+                        latestMsg.content ||
+                        (latestMsg.fileUrl?.length ? "sent file" : ""),
                       createdAt: latestMsg.createdAt,
                     }
                   : null;
@@ -412,7 +406,7 @@ export function setupWebSocketServer(server: any) {
                     profileImage: partner?.profileImage,
                     isActive,
                   },
-                  lastMessage: latestMessage,
+                  lastMessage,
                   unreadCount,
                 };
               })
