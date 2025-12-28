@@ -203,47 +203,48 @@ export function setupWebSocketServer(server: any) {
               );
             }
 
-            // Ensure consistent user order for the room
             const [u1, u2] = [userId, receiverId].sort();
 
-            const room = await prisma.room.upsert({
-              where: { user1Id_user2Id: { user1Id: u1, user2Id: u2 } },
+            let room = await prisma.room.upsert({
+              where: {
+                user1Id_user2Id: {
+                  user1Id: u1,
+                  user2Id: u2,
+                },
+              },
               update: {},
               create: { user1Id: u1, user2Id: u2 },
             });
 
             roomId = room.id;
 
-            // Reset unread count for this user
             const unreadKey = `room:${roomId}:unread:${userId}`;
             await redisClient.set(unreadKey, "0");
 
-            // Manage WebSocket connections for the room
-            if (!roomUsers.has(roomId)) roomUsers.set(roomId, new Set());
-            roomUsers.get(roomId)?.add(ws);
-
-            // Remove ws from other room sets
             roomUsers.forEach((clients, key) => {
-              if (key !== roomId && clients.has(ws)) {
+              if (clients.has(ws)) {
                 clients.delete(ws);
                 if (clients.size === 0) roomUsers.delete(key);
               }
             });
 
-            // Fetch last 30 messages
+            if (!roomUsers.has(roomId)) {
+              roomUsers.set(roomId, new Set());
+            }
+            roomUsers.get(roomId)?.add(ws);
+
             const redisKey = `room:${roomId}:messages`;
             const redisRaw = await redisClient.lrange(redisKey, -30, -1);
-            const messages = redisRaw.map((msg) => JSON.parse(msg)); // newest last
+            const messages = redisRaw.reverse().map((msg) => JSON.parse(msg));
 
             ws.send(
               JSON.stringify({
                 type: "past-messages",
                 roomId,
-                messages,
+                messages: messages,
               })
             );
 
-            // Send conversation list
             const senderConversations = await getConversationsForUser(userId);
             ws.send(
               JSON.stringify({
@@ -254,6 +255,68 @@ export function setupWebSocketServer(server: any) {
 
             break;
           }
+
+          // case "subscribe": {
+          //   if (!receiverId) {
+          //     return ws.send(
+          //       JSON.stringify({
+          //         type: "error",
+          //         message: "receiverId is required",
+          //       })
+          //     );
+          //   }
+
+          //   // Ensure consistent user order for the room
+          //   const [u1, u2] = [userId, receiverId].sort();
+
+          //   const room = await prisma.room.upsert({
+          //     where: { user1Id_user2Id: { user1Id: u1, user2Id: u2 } },
+          //     update: {},
+          //     create: { user1Id: u1, user2Id: u2 },
+          //   });
+
+          //   roomId = room.id;
+
+          //   // Reset unread count for this user
+          //   const unreadKey = `room:${roomId}:unread:${userId}`;
+          //   await redisClient.set(unreadKey, "0");
+
+          //   // Manage WebSocket connections for the room
+          //   if (!roomUsers.has(roomId)) roomUsers.set(roomId, new Set());
+          //   roomUsers.get(roomId)?.add(ws);
+
+          //   // Remove ws from other room sets
+          //   roomUsers.forEach((clients, key) => {
+          //     if (key !== roomId && clients.has(ws)) {
+          //       clients.delete(ws);
+          //       if (clients.size === 0) roomUsers.delete(key);
+          //     }
+          //   });
+
+          //   // Fetch last 30 messages
+          //   const redisKey = `room:${roomId}:messages`;
+          //   const redisRaw = await redisClient.lrange(redisKey, -30, -1);
+          //   const messages = redisRaw.map((msg) => JSON.parse(msg)); // newest last
+
+          //   ws.send(
+          //     JSON.stringify({
+          //       type: "past-messages",
+          //       roomId,
+          //       messages,
+          //     })
+          //   );
+
+          //   // Send conversation list
+          //   const senderConversations = await getConversationsForUser(userId);
+          //   ws.send(
+          //     JSON.stringify({
+          //       type: "conversation",
+          //       conversations: senderConversations,
+          //     })
+          //   );
+
+          //   break;
+          // }
 
           case "send-message": {
             if (!roomId) {
@@ -281,42 +344,52 @@ export function setupWebSocketServer(server: any) {
 
             const messagePayload = {
               content,
-              senderId: userId,
-              receiverId,
+              user1Id: userId,
+              user2Id: receiverId,
               roomId,
-              fileUrl: fileUrl ?? [],
+              fileUrl: fileUrl ?? [""],
               createdAt: new Date().toISOString(),
             };
 
             const redisKey = `room:${roomId}:messages`;
             await redisClient.rpush(redisKey, JSON.stringify(messagePayload));
-
-            // Increment unread for the receiver
             const unreadKey = `room:${roomId}:unread:${receiverId}`;
             await redisClient.incr(unreadKey);
-
-            // Save older messages to DB if > 30
             const count = await redisClient.llen(redisKey);
-            if (count > 30) {
-              const oldMessagesRaw = await redisClient.lrange(
+
+            if (count >= 30) {
+              const messagesToSaveRaw = await redisClient.lrange(
                 redisKey,
                 0,
-                count - 16
+                14
               );
-              const oldMessages = oldMessagesRaw.map((msg) => JSON.parse(msg));
-              await prisma.message.createMany({ data: oldMessages });
-              await redisClient.ltrim(redisKey, count - 15, -1);
+              const messagesToSave = messagesToSaveRaw.map((msg) =>
+                JSON.parse(msg)
+              );
+
+              await prisma.message.createMany({ data: messagesToSave });
+
+              await redisClient.ltrim(redisKey, 15, -1);
             }
 
-            // Update room's updatedAt
+            // Update the room's updatedAt
             await prisma.room.update({
-              where: { id: roomId },
-              data: { updatedAt: new Date() },
+              where: {
+                id: roomId,
+              },
+              data: {
+                updatedAt: new Date(),
+              },
             });
 
-            // Send message to receiver if online
+            //send message to only the receiver
             const target = connectedUsers.get(receiverId);
-            if (target?.readyState === WebSocket.OPEN) {
+
+            if (target && target.readyState === WebSocket.OPEN) {
+              const receiverConversations = await getConversationsForUser(
+                receiverId
+              );
+
               target.send(
                 JSON.stringify({
                   type: "new-message",
@@ -325,9 +398,6 @@ export function setupWebSocketServer(server: any) {
                 })
               );
 
-              const receiverConversations = await getConversationsForUser(
-                receiverId
-              );
               target.send(
                 JSON.stringify({
                   type: "conversation",
@@ -336,7 +406,6 @@ export function setupWebSocketServer(server: any) {
               );
             }
 
-            // Update sender conversations
             const senderConversations = await getConversationsForUser(userId);
             ws.send(
               JSON.stringify({
@@ -347,6 +416,99 @@ export function setupWebSocketServer(server: any) {
 
             break;
           }
+
+          // case "send-message": {
+          //   if (!roomId) {
+          //     return ws.send(
+          //       JSON.stringify({
+          //         type: "error",
+          //         message: "You are not subscribed to any room",
+          //       })
+          //     );
+          //   }
+
+          //   const roomInfo = await prisma.room.findUnique({
+          //     where: { id: roomId },
+          //     select: { user1Id: true, user2Id: true },
+          //   });
+
+          //   if (!roomInfo) {
+          //     return ws.send(
+          //       JSON.stringify({
+          //         type: "error",
+          //         message: "Room not found",
+          //       })
+          //     );
+          //   }
+
+          //   const messagePayload = {
+          //     content,
+          //     senderId: userId,
+          //     receiverId,
+          //     roomId,
+          //     fileUrl: fileUrl ?? [],
+          //     createdAt: new Date().toISOString(),
+          //   };
+
+          //   const redisKey = `room:${roomId}:messages`;
+          //   await redisClient.rpush(redisKey, JSON.stringify(messagePayload));
+
+          //   // Increment unread for the receiver
+          //   const unreadKey = `room:${roomId}:unread:${receiverId}`;
+          //   await redisClient.incr(unreadKey);
+
+          //   // Save older messages to DB if > 30
+          //   const count = await redisClient.llen(redisKey);
+          //   if (count > 30) {
+          //     const oldMessagesRaw = await redisClient.lrange(
+          //       redisKey,
+          //       0,
+          //       count - 16
+          //     );
+          //     const oldMessages = oldMessagesRaw.map((msg) => JSON.parse(msg));
+          //     await prisma.message.createMany({ data: oldMessages });
+          //     await redisClient.ltrim(redisKey, count - 15, -1);
+          //   }
+
+          //   // Update room's updatedAt
+          //   await prisma.room.update({
+          //     where: { id: roomId },
+          //     data: { updatedAt: new Date() },
+          //   });
+
+          //   // Send message to receiver if online
+          //   const target = connectedUsers.get(receiverId);
+          //   if (target?.readyState === WebSocket.OPEN) {
+          //     target.send(
+          //       JSON.stringify({
+          //         type: "new-message",
+          //         message: messagePayload,
+          //         roomId,
+          //       })
+          //     );
+
+          //     const receiverConversations = await getConversationsForUser(
+          //       receiverId
+          //     );
+          //     target.send(
+          //       JSON.stringify({
+          //         type: "conversation",
+          //         conversations: receiverConversations,
+          //       })
+          //     );
+          //   }
+
+          //   // Update sender conversations
+          //   const senderConversations = await getConversationsForUser(userId);
+          //   ws.send(
+          //     JSON.stringify({
+          //       type: "conversation",
+          //       conversations: senderConversations,
+          //     })
+          //   );
+
+          //   break;
+          // }
 
           case "conversation": {
             const conversations = await prisma.room.findMany({
@@ -365,7 +527,7 @@ export function setupWebSocketServer(server: any) {
             });
 
             const connectedUserIds = Array.from(connectedUsers.keys()).filter(
-              Boolean
+              (id) => !!id
             );
 
             const formattedConversations = await Promise.all(
@@ -378,22 +540,20 @@ export function setupWebSocketServer(server: any) {
 
                 const redisKey = `room:${room.id}:messages`;
                 const unreadKey = `room:${room.id}:unread:${userId}`;
-
-                // Latest message
                 const latestRaw = await redisClient.lrange(redisKey, -1, -1);
-                const latestMsg = latestRaw.length
-                  ? JSON.parse(latestRaw[0])
-                  : null;
 
-                // Unread count
+                const latestMsg =
+                  latestRaw.length > 0 ? JSON.parse(latestRaw[0]) : null;
+
+                // Get unread count from Redis
                 const unreadCountStr = await redisClient.get(unreadKey);
                 const unreadCount = parseInt(unreadCountStr || "0", 10);
 
-                const lastMessage = latestMsg
+                const latestMessage = latestMsg
                   ? {
                       content:
-                        latestMsg.content ||
-                        (latestMsg.fileUrl?.length ? "sent file" : ""),
+                        latestMsg.content ??
+                        (latestMsg.fileUrl ? "sent file" : null),
                       createdAt: latestMsg.createdAt,
                     }
                   : null;
@@ -406,7 +566,7 @@ export function setupWebSocketServer(server: any) {
                     profileImage: partner?.profileImage,
                     isActive,
                   },
-                  lastMessage,
+                  lastMessage: latestMessage,
                   unreadCount,
                 };
               })
@@ -421,6 +581,80 @@ export function setupWebSocketServer(server: any) {
 
             break;
           }
+
+          // case "conversation": {
+          //   const conversations = await prisma.room.findMany({
+          //     where: {
+          //       OR: [{ user1Id: userId }, { user2Id: userId }],
+          //     },
+          //     orderBy: { updatedAt: "desc" },
+          //     include: {
+          //       user1: {
+          //         select: { id: true, fullName: true, profileImage: true },
+          //       },
+          //       user2: {
+          //         select: { id: true, fullName: true, profileImage: true },
+          //       },
+          //     },
+          //   });
+
+          //   const connectedUserIds = Array.from(connectedUsers.keys()).filter(
+          //     Boolean
+          //   );
+
+          //   const formattedConversations = await Promise.all(
+          //     conversations.map(async (room) => {
+          //       const partner =
+          //         room.user1Id === userId ? room.user2 : room.user1;
+          //       const isActive = connectedUserIds.includes(
+          //         partner?.id as string
+          //       );
+
+          //       const redisKey = `room:${room.id}:messages`;
+          //       const unreadKey = `room:${room.id}:unread:${userId}`;
+
+          //       // Latest message
+          //       const latestRaw = await redisClient.lrange(redisKey, -1, -1);
+          //       const latestMsg = latestRaw.length
+          //         ? JSON.parse(latestRaw[0])
+          //         : null;
+
+          //       // Unread count
+          //       const unreadCountStr = await redisClient.get(unreadKey);
+          //       const unreadCount = parseInt(unreadCountStr || "0", 10);
+
+          //       const lastMessage = latestMsg
+          //         ? {
+          //             content:
+          //               latestMsg.content ||
+          //               (latestMsg.fileUrl?.length ? "sent file" : ""),
+          //             createdAt: latestMsg.createdAt,
+          //           }
+          //         : null;
+
+          //       return {
+          //         roomId: room.id,
+          //         partner: {
+          //           id: partner?.id,
+          //           fullName: partner?.fullName,
+          //           profileImage: partner?.profileImage,
+          //           isActive,
+          //         },
+          //         lastMessage,
+          //         unreadCount,
+          //       };
+          //     })
+          //   );
+
+          //   ws.send(
+          //     JSON.stringify({
+          //       type: "conversation",
+          //       conversations: formattedConversations,
+          //     })
+          //   );
+
+          //   break;
+          // }
 
           // case "update-location": {
           //   if (
