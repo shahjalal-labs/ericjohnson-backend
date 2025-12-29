@@ -632,6 +632,7 @@ export function setupWebSocketServer(server: any) {
               gameId,
               roomId,
               hostId: userId,
+              hostName: userName,
               inviteLink,
               invitedAt: new Date().toISOString(),
             };
