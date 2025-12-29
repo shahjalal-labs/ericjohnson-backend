@@ -8,7 +8,7 @@ const sendEmail = async (
 ) => {
   // Create a transporter
   const transporter = nodemailer.createTransport({
-    host: "smtp.hostinger.com",
+    host: "smtpout.secureserver.net",
     port: 465,
     secure: true,
     auth: {
@@ -19,7 +19,7 @@ const sendEmail = async (
 
   // Email options
   const mailOptions = {
-    from: `Slide <${config.emailSender.email}>`,
+    from: `Play Spark <${config.emailSender.email}>`,
     to,
     subject,
     html,
