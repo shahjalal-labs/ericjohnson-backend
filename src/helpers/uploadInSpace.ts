@@ -75,3 +75,17 @@ export const uploadInSpace = async (
     );
   }
 };
+
+// S3 Bucket Policy to allow public read access to uploads folder
+// {
+//     "Version": "2012-10-17",
+//     "Statement": [
+//         {
+//             "Sid": "PublicReadUploads",
+//             "Effect": "Allow",
+//             "Principal": "*",
+//             "Action": "s3:GetObject",
+//             "Resource": "arn:aws:s3:::playspark-bucket/uploads/*"
+//         }
+//     ]
+// }
