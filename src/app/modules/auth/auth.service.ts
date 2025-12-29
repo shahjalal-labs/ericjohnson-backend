@@ -151,6 +151,7 @@ const userLocationUpdateInRedis = async (
   userId: string,
   userLocation: { longitude: number; latitude: number }
 ) => {
+  console.log(userLocation.latitude, userLocation.longitude);
   const redisGeoKey = "userLocations"; // you can keep all users under one key
 
   // Use GEOADD to store location
@@ -159,6 +160,9 @@ const userLocationUpdateInRedis = async (
     userLocation.longitude,
     userLocation.latitude,
     userId
+  );
+  console.log(
+    `Updated location for user ${userId}: (${userLocation.latitude}, ${userLocation.longitude})`
   );
 
   return;
