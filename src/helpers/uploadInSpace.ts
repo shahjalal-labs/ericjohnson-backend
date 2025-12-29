@@ -1,26 +1,14 @@
-import { S3Client, S3ClientConfig, ObjectCannedACL } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
+import { S3Client, S3ClientConfig, PutObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
+import config from "../config";
 
-const DO_CONFIG = {
-  endpoint: "https://api.zenexcloud.com",
-  region: "s3v4",
-  useSSL: false,
+const s3 = new S3Client({
+  region: config.aws.region,
   credentials: {
-    accessKeyId: "Be7vSXLGn1EuMzy55jLO",
-    secretAccessKey: "Gw2pW1gqVAG0GH8SXzrRJXi1036IMv5dBdgcwJme",
+    accessKeyId: config.aws.access_key_id,
+    secretAccessKey: config.aws.secret_access_key,
   },
-  spaceName: "emdadullah",
-};
-
-const s3Config: S3ClientConfig = {
-  endpoint: DO_CONFIG.endpoint,
-  region: DO_CONFIG.region,
-  credentials: DO_CONFIG.credentials,
-  forcePathStyle: true,
-};
-
-const s3 = new S3Client(s3Config);
+} as S3ClientConfig);
 
 const MAX_FILE_SIZE = 3000 * 1024 * 1024; // 3000 MB
 
@@ -43,12 +31,6 @@ const ALLOWED_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
-/**
- * Uploads a file buffer to DigitalOcean Spaces and returns the file URL.
- * @param {Express.Multer.File} file - The file object from multer
- * @returns {Promise<string>} - The URL of the uploaded file
- * @throws {Error} - If file validation fails or upload fails
- */
 export const uploadInSpace = async (
   file: Express.Multer.File,
   folder: string
@@ -72,32 +54,20 @@ export const uploadInSpace = async (
 
     // Generate a unique filename with original extension
     const fileExtension = path.extname(file.originalname);
-    const fileName = `uploads/${folder}/${Date.now()}-${Math.random()
-      .toString(36)
-      .substring(2, 15)}${fileExtension}`;
 
     const uploadParams = {
-      Bucket: DO_CONFIG.spaceName,
-      Key: fileName,
+      Bucket: config.aws.bucket_name,
+      Key: `uploads/${folder}/${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 15)}${fileExtension}`,
       Body: file.buffer,
-      ACL: "public-read" as ObjectCannedACL,
       ContentType: file.mimetype,
     };
 
-    const upload = new Upload({
-      client: s3,
-      params: uploadParams,
-    });
+    await s3.send(new PutObjectCommand(uploadParams));
 
-    const data = await upload.done();
-
-    const fileUrl =
-      data.Location ||
-      `${DO_CONFIG.endpoint}/${DO_CONFIG.spaceName}/${fileName}`;
-
-    return fileUrl;
+    return `https://${config.aws.bucket_name}.s3.${config.aws.region}.amazonaws.com/${uploadParams.Key}`;
   } catch (error) {
-    // console.error("Error uploading file to DigitalOcean Spaces:", error);
     throw new Error(
       error instanceof Error
         ? `Failed to upload file: ${error.message}`

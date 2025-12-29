@@ -8,18 +8,18 @@ const sendEmail = async (
 ) => {
   // Create a transporter
   const transporter = nodemailer.createTransport({
-    host: "smtpout.secureserver.net",
-    port: 465,
+    host: config.smtp.host,
+    port: Number(config.smtp.port),
     secure: true,
     auth: {
-      user: config.emailSender.email,
-      pass: config.emailSender.app_pass,
+      user: config.smtp.email,
+      pass: config.smtp.app_pass,
     },
   });
 
   // Email options
   const mailOptions = {
-    from: `Play Spark <${config.emailSender.email}>`,
+    from: `${config.smtp.name} <${config.smtp.email}>`,
     to,
     subject,
     html,

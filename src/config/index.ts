@@ -17,12 +17,17 @@ export default {
     reset_pass_token_expires_in: process.env.RESET_PASS_TOKEN_EXPIRES_IN,
   },
   reset_pass_link: process.env.RESET_PASS_LINK,
-  emailSender: {
+  smtp: {
     email: process.env.EMAIL,
     app_pass: process.env.APP_PASS,
+    name: process.env.EMAIL_SENDER_NAME,
+    host: process.env.SMTP_HOST,
+    port: process.env.EMAIL_PORT,
   },
-  onesignal: {
-    app_id: process.env.ONE_SIGNAL_APP_ID,
-    api_key: process.env.ONE_SIGNAL_API_KEY,
+  aws: {
+    access_key_id: process.env.AWS_ACCESS_KEY_ID,
+    secret_access_key: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION,
+    bucket_name: process.env.AWS_BUCKET_NAME,
   },
 };
