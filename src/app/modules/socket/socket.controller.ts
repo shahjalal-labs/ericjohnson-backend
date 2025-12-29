@@ -11,6 +11,8 @@ import { removeInviteForUser } from "./utility";
 const roomUsers = new Map<string, Set<WebSocket>>();
 const connectedUsers = new Map<string, CustomWebSocket>();
 const lastMatchesMap = new WeakMap<WebSocket, string[]>(); // only string arrays
+const connectedRooms = new Map<string, string>();
+const connectedGames = new Map<string, string>();
 
 let wss;
 
@@ -668,6 +670,8 @@ export function setupWebSocketServer(server: any) {
                 players,
               })
             );
+            connectedRooms.set(userId, roomId);
+            connectedGames.set(userId, gameId);
 
             break;
           }
@@ -768,6 +772,8 @@ export function setupWebSocketServer(server: any) {
                 games: invites,
               })
             );
+            connectedRooms.set(userId, incommingRoomId);
+            connectedGames.set(userId, gameId);
 
             break;
           }
@@ -946,7 +952,6 @@ export function setupWebSocketServer(server: any) {
             }
 
             const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
-
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
             const players = playersRaw.map((p) => JSON.parse(p));
 
@@ -1076,7 +1081,36 @@ export function setupWebSocketServer(server: any) {
 
     ws.on("close", async () => {
       const userId = (ws as CustomWebSocket).userId;
+
       if (userId) {
+        const gameRoomId = connectedRooms.get(userId);
+        const gameId = connectedGames.get(userId);
+        if (gameRoomId) {
+          const playersKey = `gameRoom:${gameRoomId}:${gameId}:players`;
+          const playersRaw = await redisClient.lrange(playersKey, 0, -1);
+          const players = playersRaw.map((p) => JSON.parse(p));
+
+          const updatedPlayers = players.map((p) =>
+            p.userId === userId ? { ...p, status: "leave" } : p
+          );
+
+          // Broadcast updated players
+          updatedPlayers.forEach((p) => {
+            const client = connectedUsers.get(p.userId);
+            if (client?.readyState === WebSocket.OPEN) {
+              client.send(
+                JSON.stringify({
+                  type: "leader-board-data",
+                  gameId,
+                  roomId: gameRoomId,
+                  players: updatedPlayers,
+                })
+              );
+            }
+          });
+        }
+        connectedRooms.delete(userId);
+        connectedGames.delete(userId);
         connectedUsers.delete(userId);
       }
 
