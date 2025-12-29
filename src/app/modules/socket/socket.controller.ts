@@ -10,7 +10,6 @@ import { removeInviteForUser } from "./utility";
 
 const roomUsers = new Map<string, Set<WebSocket>>();
 const connectedUsers = new Map<string, CustomWebSocket>();
-const lastMatchesMap = new WeakMap<WebSocket, string[]>(); // only string arrays
 const connectedRooms = new Map<string, string>();
 const connectedGames = new Map<string, string>();
 
@@ -127,13 +126,9 @@ export function setupWebSocketServer(server: any) {
           content,
           fileUrl,
           chatRoomId,
-          longitude,
-          latitude,
           gameId,
           roomId: incommingRoomId,
           userIds,
-          avatar,
-          userName,
           score,
         } = JSON.parse(message.toString());
 
@@ -505,91 +500,6 @@ export function setupWebSocketServer(server: any) {
             break;
           }
 
-          // case "update-location": {
-          //   if (
-          //     typeof latitude !== "number" ||
-          //     typeof longitude !== "number" ||
-          //     Number.isNaN(latitude) ||
-          //     Number.isNaN(longitude) ||
-          //     latitude < -90 ||
-          //     latitude > 90 ||
-          //     longitude < -180 ||
-          //     longitude > 180
-          //   ) {
-          //     ws.send(
-          //       JSON.stringify({
-          //         type: "error",
-          //         message: "Invalid latitude or longitude",
-          //       })
-          //     );
-          //     break;
-          //   }
-
-          //   const redisGeoKey = "userLocations";
-
-          //   await redisClient.geoadd(redisGeoKey, longitude, latitude, userId);
-
-          //   const matches = await getNearbyUsers(userId, 1);
-          //   const currentIds = matches.map((m: any) => m.id).sort(); // normalize order
-
-          //   // get last match IDs
-          //   const lastMatches = lastMatchesMap.get(ws) ?? [];
-          //   const lastIds = [...lastMatches].sort();
-
-          //   // check if IDs are different
-          //   const isDifferent =
-          //     currentIds.length !== lastIds.length ||
-          //     currentIds.some((id, i) => id !== lastIds[i]);
-
-          //   if (isDifferent) {
-          //     lastMatchesMap.set(ws, currentIds);
-
-          //     ws.send(
-          //       JSON.stringify({
-          //         type: "matches",
-          //         message: `You and ${matches.length} people are at the same location`,
-          //         matches,
-          //       })
-          //     );
-          //   }
-
-          //   // also update other matched users
-          //   for (const match of matches) {
-          //     const matchUserId = match.id;
-          //     const matchWs = connectedUsers.get(matchUserId);
-
-          //     if (matchWs && matchWs.readyState === WebSocket.OPEN) {
-          //       const theirMatches = await getNearbyUsers(matchUserId, 1);
-          //       const theirCurrentIds = theirMatches
-          //         .map((m: any) => m.id)
-          //         .sort();
-
-          //       const lastTheirMatches = lastMatchesMap.get(matchWs) ?? [];
-          //       const lastTheirIds = [...lastTheirMatches].sort();
-
-          //       const theirIsDifferent =
-          //         theirCurrentIds.length !== lastTheirIds.length ||
-          //         theirCurrentIds.some((id, i) => id !== lastTheirIds[i]);
-
-          //       if (theirIsDifferent) {
-          //         lastMatchesMap.set(matchWs, theirCurrentIds);
-
-          //         matchWs.send(
-          //           JSON.stringify({
-          //             type: "matches",
-          //             message: `You and ${theirMatches.length} people are at the same location`,
-          //             matches: theirMatches,
-          //           })
-          //         );
-          //       }
-          //     }
-          //   }
-
-          //   break;
-          // }
-
-          //for host to invite players
-
           case "invite-player": {
             if (!gameId) {
               ws.send(
@@ -609,6 +519,10 @@ export function setupWebSocketServer(server: any) {
               );
             }
 
+            const userInfo = await prisma.user.findUnique({
+              where: { id: userId },
+            });
+
             const roomId = uuidv4();
             const hostKey = `gameRoom:${roomId}:${gameId}:host`;
             const playersKey = `gameRoom:${roomId}:${gameId}:players`;
@@ -622,8 +536,8 @@ export function setupWebSocketServer(server: any) {
               JSON.stringify({
                 userId,
                 hostId: userId,
-                avatar,
-                userName,
+                avatar: userInfo?.profileImage || "",
+                userName: userInfo?.fullName || "",
                 status: "ready",
                 score: 0,
               })
@@ -635,7 +549,7 @@ export function setupWebSocketServer(server: any) {
               gameId,
               roomId,
               hostId: userId,
-              hostName: userName,
+              hostName: userInfo?.fullName || "",
               inviteLink,
               invitedAt: new Date().toISOString(),
             };
@@ -704,6 +618,10 @@ export function setupWebSocketServer(server: any) {
               break;
             }
 
+            const userInfo = await prisma.user.findUnique({
+              where: { id: userId },
+            });
+
             const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
             const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
 
@@ -730,8 +648,8 @@ export function setupWebSocketServer(server: any) {
               JSON.stringify({
                 userId,
                 hostId,
-                avatar,
-                userName,
+                avatar: userInfo?.profileImage || "",
+                userName: userInfo?.fullName || "",
                 status: "ready",
                 score: 0,
               })
@@ -939,47 +857,7 @@ export function setupWebSocketServer(server: any) {
             break;
           }
 
-          // User leaves the game
           case "leave-game": {
-            if (!gameId || !incommingRoomId) {
-              ws.send(
-                JSON.stringify({
-                  type: "error",
-                  message: "gameId & roomId required",
-                })
-              );
-              break;
-            }
-
-            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
-            const playersRaw = await redisClient.lrange(playersKey, 0, -1);
-            const players = playersRaw.map((p) => JSON.parse(p));
-
-            // Host leaving
-
-            const updatedPlayers = players.map((p) =>
-              p.userId === userId ? { ...p, status: "leave" } : p
-            );
-
-            // Broadcast updated players
-            updatedPlayers.forEach((p) => {
-              const client = connectedUsers.get(p.userId);
-              if (client?.readyState === WebSocket.OPEN) {
-                client.send(
-                  JSON.stringify({
-                    type: "leader-board-data",
-                    gameId,
-                    roomId: incommingRoomId,
-                    players: updatedPlayers,
-                  })
-                );
-              }
-            });
-            break;
-          }
-
-          //if only one player is left, end the game
-          case "end-game": {
             if (!gameId || !incommingRoomId) {
               ws.send(
                 JSON.stringify({
@@ -1059,6 +937,26 @@ export function setupWebSocketServer(server: any) {
               );
               break;
             }
+
+            const updatedPlayers = players.map((p) =>
+              p.userId === userId ? { ...p, status: "leave" } : p
+            );
+
+            // Broadcast updated players
+            updatedPlayers.forEach((p) => {
+              const client = connectedUsers.get(p.userId);
+              if (client?.readyState === WebSocket.OPEN) {
+                client.send(
+                  JSON.stringify({
+                    type: "leader-board-data",
+                    gameId,
+                    roomId: incommingRoomId,
+                    players: updatedPlayers,
+                  })
+                );
+              }
+            });
+            break;
           }
 
           default:
