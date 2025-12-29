@@ -6,6 +6,7 @@ import { parse } from "url";
 import { CustomWebSocket } from "./socket.interface";
 import redisClient from "../../../helpers/redis";
 import { v4 as uuidv4 } from "uuid";
+import { removeInviteForUser } from "./utility";
 
 const roomUsers = new Map<string, Set<WebSocket>>();
 const connectedUsers = new Map<string, CustomWebSocket>();
@@ -639,7 +640,10 @@ export function setupWebSocketServer(server: any) {
 
             for (const invitedUserId of userIds) {
               const inviteKey = `user:${invitedUserId}:invites`;
+              const invitedUsersKey = `gameRoom:${roomId}:${gameId}:invitedUsers`;
+
               await redisClient.rpush(inviteKey, JSON.stringify(invitePayload));
+              await redisClient.sadd(invitedUsersKey, invitedUserId);
 
               // 🔔 Send realtime invite if online
               const client = connectedUsers.get(invitedUserId);
@@ -747,6 +751,24 @@ export function setupWebSocketServer(server: any) {
               }
             });
 
+            await removeInviteForUser(
+              redisClient,
+              userId,
+              gameId,
+              incommingRoomId
+            );
+
+            const inviteKey = `user:${userId}:invites`;
+            const invitesRaw = await redisClient.lrange(inviteKey, 0, -1);
+            const invites = invitesRaw.map((i) => JSON.parse(i));
+
+            ws.send(
+              JSON.stringify({
+                type: "invited-games",
+                games: invites,
+              })
+            );
+
             break;
           }
 
@@ -813,9 +835,18 @@ export function setupWebSocketServer(server: any) {
               }
             });
 
-            //delete stored invites
-            const inviteKey = `user:${userId}:invites`;
-            await redisClient.del(inviteKey);
+            const invitedUsersKey = `gameRoom:${incommingRoomId}:${gameId}:invitedUsers`;
+            const invitedUserIds = await redisClient.smembers(invitedUsersKey);
+
+            for (const invitedUserId of invitedUserIds) {
+              await removeInviteForUser(
+                redisClient,
+                invitedUserId,
+                gameId,
+                incommingRoomId
+              );
+            }
+            await redisClient.del(invitedUsersKey);
 
             break;
           }
