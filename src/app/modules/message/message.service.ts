@@ -3,9 +3,9 @@ import { paginationHelper } from "../../../shared/pagination";
 import prisma from "../../../shared/prisma";
 import { uploadInSpace } from "../../../helpers/uploadInSpace";
 
-const urlGenerate = async (req: Request) => {
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-
+const urlGenerate = async (files: {
+  [fieldName: string]: Express.Multer.File[];
+}) => {
   const processImages = async (files?: Express.Multer.File[]) => {
     if (!files || files.length === 0) return null;
     return Promise.all(
@@ -14,13 +14,11 @@ const urlGenerate = async (req: Request) => {
   };
 
   const [fileUrl] = await Promise.all([processImages(files["files"])]);
-
   return fileUrl;
 };
 
-const personalMessages = async (req: Request) => {
-  const { roomId } = req.params;
-  const { page, limit, skip } = paginationHelper(req.query as any);
+const personalMessages = async (roomId: string, query: any) => {
+  const { page, limit, skip } = paginationHelper(query);
 
   const messages = await prisma.message.findMany({
     where: {

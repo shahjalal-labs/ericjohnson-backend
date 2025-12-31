@@ -510,14 +510,14 @@ export function setupWebSocketServer(server: any) {
               );
               break;
             }
-            if (userIds === undefined || userIds.length === 0) {
-              ws.send(
-                JSON.stringify({
-                  type: "error",
-                  message: "userIds is required",
-                })
-              );
-            }
+            // if (userIds === undefined || userIds.length === 0) {
+            //   ws.send(
+            //     JSON.stringify({
+            //       type: "error",
+            //       message: "userIds is required",
+            //     })
+            //   );
+            // }
 
             const userInfo = await prisma.user.findUnique({
               where: { id: userId },
@@ -554,24 +554,48 @@ export function setupWebSocketServer(server: any) {
               invitedAt: new Date().toISOString(),
             };
 
-            for (const invitedUserId of userIds) {
-              const inviteKey = `user:${invitedUserId}:invites`;
-              const invitedUsersKey = `gameRoom:${roomId}:${gameId}:invitedUsers`;
+            if (userIds && userIds.length !== 0) {
+              for (const invitedUserId of userIds) {
+                const inviteKey = `user:${invitedUserId}:invites`;
+                const invitedUsersKey = `gameRoom:${roomId}:${gameId}:invitedUsers`;
 
-              await redisClient.rpush(inviteKey, JSON.stringify(invitePayload));
-              await redisClient.sadd(invitedUsersKey, invitedUserId);
-
-              // 🔔 Send realtime invite if online
-              const client = connectedUsers.get(invitedUserId);
-              if (client?.readyState === WebSocket.OPEN) {
-                client.send(
-                  JSON.stringify({
-                    type: "invite-link",
-                    ...invitePayload,
-                  })
+                await redisClient.rpush(
+                  inviteKey,
+                  JSON.stringify(invitePayload)
                 );
+                await redisClient.sadd(invitedUsersKey, invitedUserId);
+
+                // 🔔 Send realtime invite if online
+                const client = connectedUsers.get(invitedUserId);
+                if (client?.readyState === WebSocket.OPEN) {
+                  client.send(
+                    JSON.stringify({
+                      type: "invite-link",
+                      ...invitePayload,
+                    })
+                  );
+                }
               }
             }
+
+            // for (const invitedUserId of userIds) {
+            //   const inviteKey = `user:${invitedUserId}:invites`;
+            //   const invitedUsersKey = `gameRoom:${roomId}:${gameId}:invitedUsers`;
+
+            //   await redisClient.rpush(inviteKey, JSON.stringify(invitePayload));
+            //   await redisClient.sadd(invitedUsersKey, invitedUserId);
+
+            //   // 🔔 Send realtime invite if online
+            //   const client = connectedUsers.get(invitedUserId);
+            //   if (client?.readyState === WebSocket.OPEN) {
+            //     client.send(
+            //       JSON.stringify({
+            //         type: "invite-link",
+            //         ...invitePayload,
+            //       })
+            //     );
+            //   }
+            // }
 
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
             const players = playersRaw.map((item) => JSON.parse(item));

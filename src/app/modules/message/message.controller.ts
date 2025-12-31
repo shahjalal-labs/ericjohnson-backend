@@ -3,7 +3,8 @@ import sendResponse from "../../../shared/sendResponse";
 import { messageService } from "./message.service";
 
 const generateFileUrl = catchAsync(async (req, res) => {
-  const fileUrl = await messageService.urlGenerate(req);
+  const files = req.files as { [fieldName: string]: Express.Multer.File[] };
+  const fileUrl = await messageService.urlGenerate(files);
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -13,7 +14,9 @@ const generateFileUrl = catchAsync(async (req, res) => {
 });
 
 const personalMessages = catchAsync(async (req, res) => {
-  const messages = await messageService.personalMessages(req);
+  const { roomId } = req.params;
+  const query = req.query;
+  const messages = await messageService.personalMessages(roomId, query);
   sendResponse(res, {
     success: true,
     statusCode: 200,
