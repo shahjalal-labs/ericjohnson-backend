@@ -5,7 +5,6 @@ export const paginationHelper = (query: { page: number; limit: number }) => {
 
   const skip = (page - 1) * limit;
   const take = limit;
-  console.log(skip, take, limit, page);
 
   return { skip, take, limit, page };
 };
