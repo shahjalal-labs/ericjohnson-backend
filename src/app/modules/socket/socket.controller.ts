@@ -648,8 +648,8 @@ export function setupWebSocketServer(server: any) {
               JSON.stringify({
                 userId,
                 hostId,
-                avatar: userInfo?.profileImage || "",
-                userName: userInfo?.fullName || "",
+                avatar: userInfo?.profileImage ? userInfo.profileImage : "",
+                userName: userInfo?.fullName ? userInfo.fullName : "",
                 status: "ready",
                 score: 0,
               })
