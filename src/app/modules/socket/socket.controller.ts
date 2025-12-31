@@ -27,6 +27,8 @@ export function setupWebSocketServer(server: any) {
         : query["x-token"];
     }
 
+    console.log(authToken);
+
     const decoded = verifyWebSocketToken(ws, authToken);
     if (!decoded) {
       ws.close();
