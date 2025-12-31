@@ -536,8 +536,8 @@ export function setupWebSocketServer(server: any) {
               JSON.stringify({
                 userId,
                 hostId: userId,
-                avatar: userInfo?.profileImage || "",
-                userName: userInfo?.fullName || "",
+                avatar: userInfo?.profileImage ? userInfo.profileImage : "",
+                userName: userInfo?.fullName ? userInfo.fullName : "",
                 status: "ready",
                 score: 0,
               })
@@ -549,7 +549,7 @@ export function setupWebSocketServer(server: any) {
               gameId,
               roomId,
               hostId: userId,
-              hostName: userInfo?.fullName || "",
+              hostName: userInfo?.fullName ? userInfo.fullName : "",
               inviteLink,
               invitedAt: new Date().toISOString(),
             };
