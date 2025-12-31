@@ -111,12 +111,12 @@ export function setupWebSocketServer(server: any) {
       })
     );
 
-    ws.send(
-      JSON.stringify({
-        type: "conversation",
-        conversations: formattedConversations,
-      })
-    );
+    // ws.send(
+    //   JSON.stringify({
+    //     type: "conversation",
+    //     conversations: formattedConversations,
+    //   })
+    // );
 
     ws.on("message", async (message: any) => {
       try {
