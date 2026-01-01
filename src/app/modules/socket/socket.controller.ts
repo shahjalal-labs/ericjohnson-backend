@@ -46,72 +46,73 @@ export function setupWebSocketServer(server: any) {
       if (ws.readyState === WebSocket.OPEN) ws.ping();
     }, 30000);
 
-    const conversations = await prisma.room.findMany({
-      where: {
-        OR: [{ user1Id: userId }, { user2Id: userId }],
-      },
-      orderBy: { updatedAt: "desc" },
-      include: {
-        user1: {
-          select: { id: true, fullName: true, profileImage: true },
-        },
-        user2: {
-          select: { id: true, fullName: true, profileImage: true },
-        },
-      },
-    });
     const connectedUserIds = Array.from(connectedUsers.keys()).filter(
       (id) => !!id
     );
 
-    const formattedConversations = await Promise.all(
-      conversations.map(async (room) => {
-        const partner = room.user1Id === userId ? room.user2 : room.user1;
-        const isActive = connectedUserIds.includes(partner?.id as string);
+    // const conversations = await prisma.room.findMany({
+    //   where: {
+    //     OR: [{ user1Id: userId }, { user2Id: userId }],
+    //   },
+    //   orderBy: { updatedAt: "desc" },
+    //   include: {
+    //     user1: {
+    //       select: { id: true, fullName: true, profileImage: true },
+    //     },
+    //     user2: {
+    //       select: { id: true, fullName: true, profileImage: true },
+    //     },
+    //   },
+    // });
 
-        const redisKey = `room:${room.id}:messages`;
-        const unreadKey = `room:${room.id}:unread:${userId}`;
+    // const formattedConversations = await Promise.all(
+    //   conversations.map(async (room) => {
+    //     const partner = room.user1Id === userId ? room.user2 : room.user1;
+    //     const isActive = connectedUserIds.includes(partner?.id as string);
 
-        const [redisRaw, unreadCountStr] = await Promise.all([
-          redisClient.lrange(redisKey, 0, -1),
-          redisClient.get(unreadKey),
-        ]);
+    //     const redisKey = `room:${room.id}:messages`;
+    //     const unreadKey = `room:${room.id}:unread:${userId}`;
 
-        const unreadCount = parseInt(unreadCountStr || "0", 10);
-        let latestMessage = null;
+    //     const [redisRaw, unreadCountStr] = await Promise.all([
+    //       redisClient.lrange(redisKey, 0, -1),
+    //       redisClient.get(unreadKey),
+    //     ]);
 
-        if (redisRaw.length > 0) {
-          const redisMessages = redisRaw.map((msg) => JSON.parse(msg));
+    //     const unreadCount = parseInt(unreadCountStr || "0", 10);
+    //     let latestMessage = null;
 
-          // Sort by createdAt descending
-          redisMessages.sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
+    //     if (redisRaw.length > 0) {
+    //       const redisMessages = redisRaw.map((msg) => JSON.parse(msg));
 
-          const latestRedisMsg = redisMessages[0];
+    //       // Sort by createdAt descending
+    //       redisMessages.sort(
+    //         (a, b) =>
+    //           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    //       );
 
-          latestMessage = {
-            content:
-              latestRedisMsg.content ??
-              (latestRedisMsg.fileUrl ? "sent file" : null),
-            createdAt: latestRedisMsg.createdAt,
-          };
-        }
+    //       const latestRedisMsg = redisMessages[0];
 
-        return {
-          roomId: room.id,
-          partner: {
-            id: partner?.id,
-            fullName: partner?.fullName,
-            profileImage: partner?.profileImage,
-            isActive,
-          },
-          lastMessage: latestMessage,
-          unreadCount, // From Redis
-        };
-      })
-    );
+    //       latestMessage = {
+    //         content:
+    //           latestRedisMsg.content ??
+    //           (latestRedisMsg.fileUrl ? "sent file" : null),
+    //         createdAt: latestRedisMsg.createdAt,
+    //       };
+    //     }
+
+    //     return {
+    //       roomId: room.id,
+    //       partner: {
+    //         id: partner?.id,
+    //         fullName: partner?.fullName,
+    //         profileImage: partner?.profileImage,
+    //         isActive,
+    //       },
+    //       lastMessage: latestMessage,
+    //       unreadCount, // From Redis
+    //     };
+    //   })
+    // );
 
     // ws.send(
     //   JSON.stringify({
