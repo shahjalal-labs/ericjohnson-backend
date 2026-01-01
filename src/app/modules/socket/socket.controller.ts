@@ -649,6 +649,17 @@ export function setupWebSocketServer(server: any) {
               where: { id: userId },
             });
 
+            // const connectedRoom = connectedRooms.get(userId);
+            // if (connectedRoom) {
+            //   ws.send(
+            //     JSON.stringify({
+            //       type: "error",
+            //       message: "You are already connected to another room",
+            //     })
+            //   );
+            //   break;
+            // }
+
             const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
             const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
 
@@ -725,18 +736,20 @@ export function setupWebSocketServer(server: any) {
 
           //only host can start the game
           case "start-game": {
-            if (!gameId || !incommingRoomId) {
+            const gameId = connectedGames.get(userId);
+            const roomId = connectedRooms.get(userId);
+            if (!gameId || !roomId) {
               ws.send(
                 JSON.stringify({
                   type: "error",
-                  message: "gameId & roomId required",
+                  message: "gameId & roomId not found",
                 })
               );
               break;
             }
 
-            const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
-            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
+            const hostKey = `gameRoom:${roomId}:${gameId}:host`;
+            const playersKey = `gameRoom:${roomId}:${gameId}:players`;
 
             const hostId = await redisClient.get(hostKey);
 
@@ -771,7 +784,7 @@ export function setupWebSocketServer(server: any) {
                   JSON.stringify({
                     type: "leader-board-data",
                     gameId,
-                    roomId: incommingRoomId,
+                    roomId: roomId,
                     players: updatedPlayers,
                   })
                 );
@@ -780,13 +793,13 @@ export function setupWebSocketServer(server: any) {
                   JSON.stringify({
                     type: "game-starting",
                     gameId,
-                    roomId: incommingRoomId,
+                    roomId: roomId,
                   })
                 );
               }
             });
 
-            const invitedUsersKey = `gameRoom:${incommingRoomId}:${gameId}:invitedUsers`;
+            const invitedUsersKey = `gameRoom:${roomId}:${gameId}:invitedUsers`;
             const invitedUserIds = await redisClient.smembers(invitedUsersKey);
 
             for (const invitedUserId of invitedUserIds) {
@@ -794,7 +807,7 @@ export function setupWebSocketServer(server: any) {
                 redisClient,
                 invitedUserId,
                 gameId,
-                incommingRoomId
+                roomId
               );
             }
             await redisClient.del(invitedUsersKey);
@@ -803,17 +816,19 @@ export function setupWebSocketServer(server: any) {
           }
 
           case "score-update": {
-            if (!gameId || !incommingRoomId) {
+            const gameId = connectedGames.get(userId);
+            const roomId = connectedRooms.get(userId);
+            if (!gameId || !roomId) {
               ws.send(
                 JSON.stringify({
                   type: "error",
-                  message: "gameId & roomId required",
+                  message: "gameId & roomId not found",
                 })
               );
               break;
             }
 
-            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
+            const playersKey = `gameRoom:${roomId}:${gameId}:players`;
 
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
             if (playersRaw.length === 0) {
@@ -874,7 +889,7 @@ export function setupWebSocketServer(server: any) {
                   JSON.stringify({
                     type: "leader-board-data",
                     gameId,
-                    roomId: incommingRoomId,
+                    roomId: roomId,
                     players: updatedPlayers,
                   })
                 );
@@ -885,18 +900,20 @@ export function setupWebSocketServer(server: any) {
           }
 
           case "leave-game": {
-            if (!gameId || !incommingRoomId) {
+            const roomId = connectedRooms.get(userId);
+            const gameId = connectedGames.get(userId);
+            if (!gameId || !roomId) {
               ws.send(
                 JSON.stringify({
                   type: "error",
-                  message: "gameId & roomId required",
+                  message: "gameId & roomId not found",
                 })
               );
               break;
             }
 
-            const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
-            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
+            const hostKey = `gameRoom:${roomId}:${gameId}:host`;
+            const playersKey = `gameRoom:${roomId}:${gameId}:players`;
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
             const players = playersRaw.map((p) => JSON.parse(p));
 
@@ -924,7 +941,7 @@ export function setupWebSocketServer(server: any) {
                     JSON.stringify({
                       type: "leader-board-data",
                       gameId,
-                      roomId: incommingRoomId,
+                      roomId: roomId,
                       players: finishedPlayers,
                     })
                   );
@@ -933,7 +950,7 @@ export function setupWebSocketServer(server: any) {
                     JSON.stringify({
                       type: "game-end",
                       gameId,
-                      roomId: incommingRoomId,
+                      roomId: roomId,
                     })
                   );
                 }
@@ -947,7 +964,7 @@ export function setupWebSocketServer(server: any) {
                       type: "congratulations",
                       message: `🎉 Congratulations! You have the highest score of ${p.score}!`,
                       gameId,
-                      roomId: incommingRoomId,
+                      roomId: roomId,
                     })
                   );
                 }
@@ -956,12 +973,12 @@ export function setupWebSocketServer(server: any) {
               // Cleanup all Redis keys for this room
               await redisClient.del(playersKey);
               await redisClient.del(hostKey);
+              await redisClient.del(`gameRoom:${roomId}:${gameId}:readyUsers`);
               await redisClient.del(
-                `gameRoom:${incommingRoomId}:${gameId}:readyUsers`
+                `gameRoom:${roomId}:${gameId}:scoreUpdates`
               );
-              await redisClient.del(
-                `gameRoom:${incommingRoomId}:${gameId}:scoreUpdates`
-              );
+              connectedRooms.delete(userId);
+              connectedGames.delete(userId);
               break;
             }
 
