@@ -916,6 +916,8 @@ export function setupWebSocketServer(server: any) {
             const playersKey = `gameRoom:${roomId}:${gameId}:players`;
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
             const players = playersRaw.map((p) => JSON.parse(p));
+            console.log(players.length);
+            console.log(players);
 
             if (players.length === 1) {
               const finishedPlayers = players.map((p) => ({
