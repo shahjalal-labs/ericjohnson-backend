@@ -900,6 +900,8 @@ export function setupWebSocketServer(server: any) {
           case "leave-game": {
             const roomId = connectedRooms.get(userId);
             const gameId = connectedGames.get(userId);
+            console.log("get from inmemory", roomId, gameId);
+            console.log("get from payload", incommingRoomId);
             if (!gameId || !roomId) {
               ws.send(
                 JSON.stringify({
