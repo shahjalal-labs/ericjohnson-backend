@@ -27,8 +27,6 @@ export function setupWebSocketServer(server: any) {
         : query["x-token"];
     }
 
-    console.log(authToken);
-
     const decoded = verifyWebSocketToken(ws, authToken);
     if (!decoded) {
       ws.close();
@@ -915,28 +913,43 @@ export function setupWebSocketServer(server: any) {
             const hostKey = `gameRoom:${roomId}:${gameId}:host`;
             const playersKey = `gameRoom:${roomId}:${gameId}:players`;
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
-            const players = playersRaw.map((p) => JSON.parse(p));
-            console.log(players.length);
-            console.log(players);
+            const players = playersRaw
+              .map((p) => JSON.parse(p))
+              .filter((p) => p.status !== "leave");
 
-            if (players.length === 1) {
-              const finishedPlayers = players.map((p) => ({
-                ...p,
-                status: "finished",
-              }));
+            const updatedPlayers = playersRaw.map((item) => {
+              const player = JSON.parse(item);
 
-              await redisClient.del(playersKey);
-              for (const p of finishedPlayers) {
-                await redisClient.rpush(playersKey, JSON.stringify(p));
+              if (player.userId === userId) {
+                if (player.status !== "playing") {
+                  ws.send(
+                    JSON.stringify({
+                      type: "error",
+                      message: "Game not started",
+                    })
+                  );
+                  throw new Error("Game not started");
+                }
+
+                player.status = players.length === 1 ? "finished" : "leave";
               }
 
-              const topScore = Math.max(...finishedPlayers.map((p) => p.score));
-              const topPlayers = finishedPlayers.filter(
+              return player;
+            });
+
+            await redisClient.del(playersKey);
+            for (const p of updatedPlayers) {
+              await redisClient.rpush(playersKey, JSON.stringify(p));
+            }
+
+            if (players.length === 1) {
+              const topScore = Math.max(...updatedPlayers.map((p) => p.score));
+              const topPlayers = updatedPlayers.filter(
                 (p) => p.score === topScore
               );
 
               // Broadcast
-              finishedPlayers.forEach((p) => {
+              updatedPlayers.forEach((p) => {
                 const client = connectedUsers.get(p.userId);
                 if (client?.readyState === WebSocket.OPEN) {
                   client.send(
@@ -944,7 +957,7 @@ export function setupWebSocketServer(server: any) {
                       type: "leader-board-data",
                       gameId,
                       roomId: roomId,
-                      players: finishedPlayers,
+                      players: updatedPlayers,
                     })
                   );
 
@@ -984,10 +997,6 @@ export function setupWebSocketServer(server: any) {
               break;
             }
 
-            const updatedPlayers = players.map((p) =>
-              p.userId === userId ? { ...p, status: "leave" } : p
-            );
-
             // Broadcast updated players
             updatedPlayers.forEach((p) => {
               const client = connectedUsers.get(p.userId);
@@ -996,7 +1005,7 @@ export function setupWebSocketServer(server: any) {
                   JSON.stringify({
                     type: "leader-board-data",
                     gameId,
-                    roomId: incommingRoomId,
+                    roomId: roomId,
                     players: updatedPlayers,
                   })
                 );
