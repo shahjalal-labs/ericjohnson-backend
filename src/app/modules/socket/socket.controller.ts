@@ -856,7 +856,7 @@ export function setupWebSocketServer(server: any) {
                   return;
                 }
 
-                player.score = (player.score || 0) + score;
+                player.score = score;
                 scoreUpdated = true;
               }
 
