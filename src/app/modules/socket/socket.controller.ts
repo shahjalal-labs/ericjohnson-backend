@@ -34,6 +34,7 @@ export function setupWebSocketServer(server: any) {
     }
     const userId = decoded.id;
     ws.userId = userId;
+    console.log(userId);
     connectedUsers.set(userId, ws);
     if (!roomUsers.has(userId)) roomUsers.set(userId, new Set());
     roomUsers.get(userId)?.add(ws);
@@ -919,17 +920,19 @@ export function setupWebSocketServer(server: any) {
             const updatedPlayers = playersRaw.map((item) => {
               const player = JSON.parse(item);
 
-              if (player.status !== "playing") {
-                ws.send(
-                  JSON.stringify({
-                    type: "error",
-                    message: "Game not started",
-                  })
-                );
-                throw new Error("Game not started");
-              }
+              if (player.userId === userId) {
+                if (player.status !== "playing") {
+                  ws.send(
+                    JSON.stringify({
+                      type: "error",
+                      message: "Game not started",
+                    })
+                  );
+                  throw new Error("Game not started");
+                }
 
-              player.status = players.length === 1 ? "finished" : "leave";
+                player.status = players.length === 1 ? "finished" : "leave";
+              }
 
               return player;
             });
