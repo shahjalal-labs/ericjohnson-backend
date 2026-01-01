@@ -898,11 +898,8 @@ export function setupWebSocketServer(server: any) {
           }
 
           case "leave-game": {
-            const roomId = connectedRooms.get(userId);
-            const gameId = connectedGames.get(userId);
-            console.log("get from inmemory", roomId, gameId);
-            console.log("get from payload", incommingRoomId);
-            if (!gameId || !roomId) {
+            console.log("get from payload", incommingRoomId, gameId);
+            if (!gameId || !incommingRoomId) {
               ws.send(
                 JSON.stringify({
                   type: "error",
@@ -912,8 +909,8 @@ export function setupWebSocketServer(server: any) {
               break;
             }
 
-            const hostKey = `gameRoom:${roomId}:${gameId}:host`;
-            const playersKey = `gameRoom:${roomId}:${gameId}:players`;
+            const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
+            const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
             const players = playersRaw
               .map((p) => JSON.parse(p))
@@ -958,7 +955,7 @@ export function setupWebSocketServer(server: any) {
                     JSON.stringify({
                       type: "leader-board-data",
                       gameId,
-                      roomId: roomId,
+                      roomId: incommingRoomId,
                       players: updatedPlayers,
                     })
                   );
@@ -967,7 +964,7 @@ export function setupWebSocketServer(server: any) {
                     JSON.stringify({
                       type: "game-end",
                       gameId,
-                      roomId: roomId,
+                      roomId: incommingRoomId,
                     })
                   );
                 }
@@ -981,7 +978,7 @@ export function setupWebSocketServer(server: any) {
                       type: "congratulations",
                       message: `🎉 Congratulations! You have the highest score of ${p.score}!`,
                       gameId,
-                      roomId: roomId,
+                      roomId: incommingRoomId,
                     })
                   );
                 }
@@ -990,9 +987,11 @@ export function setupWebSocketServer(server: any) {
               // Cleanup all Redis keys for this room
               await redisClient.del(playersKey);
               await redisClient.del(hostKey);
-              await redisClient.del(`gameRoom:${roomId}:${gameId}:readyUsers`);
               await redisClient.del(
-                `gameRoom:${roomId}:${gameId}:scoreUpdates`
+                `gameRoom:${incommingRoomId}:${gameId}:readyUsers`
+              );
+              await redisClient.del(
+                `gameRoom:${incommingRoomId}:${gameId}:scoreUpdates`
               );
               connectedRooms.delete(userId);
               connectedGames.delete(userId);
@@ -1007,7 +1006,7 @@ export function setupWebSocketServer(server: any) {
                   JSON.stringify({
                     type: "leader-board-data",
                     gameId,
-                    roomId: roomId,
+                    roomId: incommingRoomId,
                     players: updatedPlayers,
                   })
                 );
