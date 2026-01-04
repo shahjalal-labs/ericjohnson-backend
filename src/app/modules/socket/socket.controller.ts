@@ -50,6 +50,11 @@ export function setupWebSocketServer(server: any) {
     );
     console.log(connectedUserIds);
 
+    const connectedRoomIds = Array.from(connectedRooms.values()).filter(
+      (id) => !!id
+    );
+    console.log(connectedRoomIds);
+
     // const conversations = await prisma.room.findMany({
     //   where: {
     //     OR: [{ user1Id: userId }, { user2Id: userId }],
@@ -602,6 +607,7 @@ export function setupWebSocketServer(server: any) {
 
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
             const players = playersRaw.map((item) => JSON.parse(item));
+            console.log(players, "players from invite link");
 
             ws.send(
               JSON.stringify({
