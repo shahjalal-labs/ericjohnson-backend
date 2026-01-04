@@ -917,12 +917,14 @@ export function setupWebSocketServer(server: any) {
             const players = playersRaw
               .map((p) => JSON.parse(p))
               .filter((p) => p.status !== "leave");
+            console.log(players);
 
             const updatedPlayers = playersRaw.map((item) => {
               const player = JSON.parse(item);
 
               console.log("connected user id", userId);
               console.log("player user id", player.userId);
+              console.log(player);
 
               if (player.userId === userId) {
                 // if (player.status !== "playing") {
