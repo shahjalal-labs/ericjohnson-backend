@@ -1034,49 +1034,98 @@ export function setupWebSocketServer(server: any) {
     ws.on("close", async () => {
       const userId = (ws as CustomWebSocket).userId;
 
-      if (userId) {
-        const gameRoomId = connectedRooms.get(userId);
-        const gameId = connectedGames.get(userId);
-        if (gameRoomId !== undefined) {
-          const playersKey = `gameRoom:${gameRoomId}:${gameId}:players`;
-          const playersRaw = await redisClient.lrange(playersKey, 0, -1);
+      if (!userId) return;
+
+      const gameRoomId = connectedRooms.get(userId);
+      const gameId = connectedGames.get(userId);
+
+      if (gameRoomId && gameId) {
+        const playersKey = `gameRoom:${gameRoomId}:${gameId}:players`;
+        const hostKey = `gameRoom:${gameRoomId}:${gameId}:host`;
+
+        // 1️⃣ Read from Redis
+        const playersRaw = await redisClient.lrange(playersKey, 0, -1);
+        if (playersRaw.length > 0) {
           const players = playersRaw.map((p) => JSON.parse(p));
 
-          const updatedPlayers = playersRaw.map((item) => {
-            const player = JSON.parse(item);
+          const currentPlayer = players.find((p) => p.userId === userId);
 
-            if (player.userId === userId) {
-              player.status = players.length === 1 ? "finished" : "leave";
+          if (currentPlayer) {
+            // count active players BEFORE updating
+            const activePlayers = players.filter(
+              (p) => !["leave", "finished"].includes(p.status)
+            );
+
+            // 2️⃣ Update status
+            currentPlayer.status =
+              activePlayers.length === 1 ? "finished" : "leave";
+
+            // 3️⃣ Persist back to Redis
+            await redisClient.del(playersKey);
+            for (const p of players) {
+              await redisClient.rpush(playersKey, JSON.stringify(p));
             }
 
-            return player;
-          });
+            // 4️⃣ Re-read Redis (truth)
+            const updatedRaw = await redisClient.lrange(playersKey, 0, -1);
+            const updatedPlayers = updatedRaw.map((p) => JSON.parse(p));
 
-          // Broadcast updated players
-          updatedPlayers.forEach((p) => {
-            const client = connectedUsers.get(p.userId);
-            if (client?.readyState === WebSocket.OPEN) {
-              client.send(
-                JSON.stringify({
-                  type: "leader-board-data",
-                  gameId,
-                  roomId: gameRoomId,
-                  players: updatedPlayers,
-                })
+            // 5️⃣ Broadcast leaderboard
+            updatedPlayers.forEach((p) => {
+              const client = connectedUsers.get(p.userId);
+              if (client?.readyState === WebSocket.OPEN) {
+                client.send(
+                  JSON.stringify({
+                    type: "leader-board-data",
+                    gameId,
+                    roomId: gameRoomId,
+                    players: updatedPlayers,
+                  })
+                );
+              }
+            });
+
+            // 6️⃣ End game if last player
+            if (activePlayers.length === 1) {
+              updatedPlayers.forEach((p) => {
+                const client = connectedUsers.get(p.userId);
+                if (client?.readyState === WebSocket.OPEN) {
+                  client.send(
+                    JSON.stringify({
+                      type: "game-end",
+                      gameId,
+                      roomId: gameRoomId,
+                    })
+                  );
+                }
+              });
+
+              // Cleanup Redis
+              await redisClient.del(playersKey);
+              await redisClient.del(hostKey);
+              await redisClient.del(
+                `gameRoom:${gameRoomId}:${gameId}:readyUsers`
+              );
+              await redisClient.del(
+                `gameRoom:${gameRoomId}:${gameId}:scoreUpdates`
               );
             }
-          });
+          }
         }
-        connectedRooms.delete(userId);
-        connectedGames.delete(userId);
-        connectedUsers.delete(userId);
       }
 
+      // 7️⃣ Cleanup local memory
+      connectedRooms.delete(userId);
+      connectedGames.delete(userId);
+      connectedUsers.delete(userId);
+
+      // roomUsers cleanup (chat / lobby)
       if (roomId) {
         const clients = roomUsers.get(roomId);
         clients?.delete(ws);
         if (clients?.size === 0) roomUsers.delete(roomId);
       }
+
       console.log("WebSocket client disconnected!");
       clearInterval(interval);
     });
