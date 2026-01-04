@@ -923,34 +923,29 @@ export function setupWebSocketServer(server: any) {
             const players = playersRaw
               .map((p) => JSON.parse(p))
               .filter((p) => p.status !== "leave");
-            console.log(players);
+            console.log(players, "filtered players after leave");
 
-            const updatedPlayers = playersRaw.map((item) => {
+            const updatedPlayers = players.map((item) => {
               const player = JSON.parse(item);
 
               console.log("connected user id", userId);
               console.log("player user id", player.userId);
               console.log(player);
 
-              if (players.length === 1) {
-                player.status = "finished";
-              } else {
-                player.status = "leave";
-              }
+              if (players.length)
+                if (player.userId === userId) {
+                  // if (player.status !== "playing") {
+                  //   ws.send(
+                  //     JSON.stringify({
+                  //       type: "error",
+                  //       message: "Game not started",
+                  //     })
+                  //   );
+                  //   throw new Error("Game not started");
+                  // }
 
-              // if (player.userId === userId) {
-              //   // if (player.status !== "playing") {
-              //   //   ws.send(
-              //   //     JSON.stringify({
-              //   //       type: "error",
-              //   //       message: "Game not started",
-              //   //     })
-              //   //   );
-              //   //   throw new Error("Game not started");
-              //   // }
-
-              //   player.status = players.length === 1 ? "finished" : "leave";
-              // }
+                  player.status = players.length === 1 ? "finished" : "leave";
+                }
 
               return player;
             });
