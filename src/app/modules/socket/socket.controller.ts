@@ -48,12 +48,6 @@ export function setupWebSocketServer(server: any) {
     const connectedUserIds = Array.from(connectedUsers.keys()).filter(
       (id) => !!id
     );
-    console.log(connectedUserIds);
-
-    const connectedRoomIds = Array.from(connectedRooms.values()).filter(
-      (id) => !!id
-    );
-    console.log(connectedRoomIds);
 
     // const conversations = await prisma.room.findMany({
     //   where: {
@@ -607,7 +601,6 @@ export function setupWebSocketServer(server: any) {
 
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
             const players = playersRaw.map((item) => JSON.parse(item));
-            console.log(players, "players from invite link");
 
             ws.send(
               JSON.stringify({
@@ -923,25 +916,20 @@ export function setupWebSocketServer(server: any) {
             const players = playersRaw
               .map((p) => JSON.parse(p))
               .filter((p) => p.status !== "leave");
-            console.log(players, "filtered players after leave");
 
             const updatedPlayers = playersRaw.map((item) => {
               const player = JSON.parse(item);
 
-              console.log("connected user id", userId);
-              console.log("player user id", player.userId);
-              console.log(player);
-
               if (player.userId === userId) {
-                // if (player.status !== "playing") {
-                //   ws.send(
-                //     JSON.stringify({
-                //       type: "error",
-                //       message: "Game not started",
-                //     })
-                //   );
-                //   throw new Error("Game not started");
-                // }
+                if (player.status !== "playing") {
+                  ws.send(
+                    JSON.stringify({
+                      type: "error",
+                      message: "Game not started",
+                    })
+                  );
+                  throw new Error("Game not started");
+                }
 
                 player.status = players.length === 1 ? "finished" : "leave";
               }
