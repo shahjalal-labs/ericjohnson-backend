@@ -917,94 +917,38 @@ export function setupWebSocketServer(server: any) {
 
             const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
             const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
+
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
-            const players = playersRaw
-              .map((p) => JSON.parse(p))
-              .filter((p) => p.status !== "leave");
+            const players = playersRaw.map((p) => JSON.parse(p));
 
-            const updatedPlayers = playersRaw.map((item) => {
-              const player = JSON.parse(item);
+            const currentPlayer = players.find((p) => p.userId === userId);
+            if (!currentPlayer) break;
 
-              if (player.userId === userId) {
-                if (player.status !== "playing") {
-                  ws.send(
-                    JSON.stringify({
-                      type: "error",
-                      message: "Game not started",
-                    })
-                  );
-                  throw new Error("Game not started");
-                }
-
-                player.status = players.length === 1 ? "finished" : "leave";
-              }
-
-              return player;
-            });
-
-            await redisClient.del(playersKey);
-            for (const p of updatedPlayers) {
-              await redisClient.rpush(playersKey, JSON.stringify(p));
-            }
-
-            if (players.length === 1) {
-              const topScore = Math.max(...updatedPlayers.map((p) => p.score));
-              const topPlayers = updatedPlayers.filter(
-                (p) => p.score === topScore
+            if (currentPlayer.status !== "playing") {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  message: "Game not started",
+                })
               );
-
-              // Broadcast
-              updatedPlayers.forEach((p) => {
-                const client = connectedUsers.get(p.userId);
-                if (client?.readyState === WebSocket.OPEN) {
-                  client.send(
-                    JSON.stringify({
-                      type: "leader-board-data",
-                      gameId,
-                      roomId: incommingRoomId,
-                      players: updatedPlayers,
-                    })
-                  );
-
-                  client.send(
-                    JSON.stringify({
-                      type: "game-end",
-                      gameId,
-                      roomId: incommingRoomId,
-                    })
-                  );
-                }
-              });
-
-              topPlayers.forEach((p) => {
-                const client = connectedUsers.get(p.userId);
-                if (client?.readyState === WebSocket.OPEN) {
-                  client.send(
-                    JSON.stringify({
-                      type: "congratulations",
-                      message: `🎉 Congratulations! You have the highest score of ${p.score}!`,
-                      gameId,
-                      roomId: incommingRoomId,
-                    })
-                  );
-                }
-              });
-
-              // Cleanup all Redis keys for this room
-              await redisClient.del(playersKey);
-              await redisClient.del(hostKey);
-              await redisClient.del(
-                `gameRoom:${incommingRoomId}:${gameId}:readyUsers`
-              );
-              await redisClient.del(
-                `gameRoom:${incommingRoomId}:${gameId}:scoreUpdates`
-              );
-              connectedRooms.delete(userId);
-              connectedGames.delete(userId);
               break;
             }
 
-            // Broadcast updated players
+            const activePlayers = players.filter(
+              (p) => !["leave", "finished"].includes(p.status)
+            );
+
+            currentPlayer.status =
+              activePlayers.length === 1 ? "finished" : "leave";
+
+            await redisClient.del(playersKey);
+            for (const p of players) {
+              await redisClient.rpush(playersKey, JSON.stringify(p));
+            }
+
+            const updatedRaw = await redisClient.lrange(playersKey, 0, -1);
+            const updatedPlayers = updatedRaw.map((p) => JSON.parse(p));
+
             updatedPlayers.forEach((p) => {
               const client = connectedUsers.get(p.userId);
               if (client?.readyState === WebSocket.OPEN) {
@@ -1018,6 +962,54 @@ export function setupWebSocketServer(server: any) {
                 );
               }
             });
+
+            if (activePlayers.length === 1) {
+              const topScore = Math.max(...updatedPlayers.map((p) => p.score));
+              const winners = updatedPlayers.filter(
+                (p) => p.score === topScore
+              );
+
+              updatedPlayers.forEach((p) => {
+                const client = connectedUsers.get(p.userId);
+                if (client?.readyState === WebSocket.OPEN) {
+                  client.send(
+                    JSON.stringify({
+                      type: "game-end",
+                      gameId,
+                      roomId: incommingRoomId,
+                    })
+                  );
+                }
+              });
+
+              winners.forEach((p) => {
+                const client = connectedUsers.get(p.userId);
+                if (client?.readyState === WebSocket.OPEN) {
+                  client.send(
+                    JSON.stringify({
+                      type: "congratulations",
+                      message: `🎉 Congratulations! You have the highest score of ${p.score}!`,
+                      gameId,
+                      roomId: incommingRoomId,
+                    })
+                  );
+                }
+              });
+
+              // 8️⃣ Cleanup Redis
+              await redisClient.del(playersKey);
+              await redisClient.del(hostKey);
+              await redisClient.del(
+                `gameRoom:${incommingRoomId}:${gameId}:readyUsers`
+              );
+              await redisClient.del(
+                `gameRoom:${incommingRoomId}:${gameId}:scoreUpdates`
+              );
+            }
+
+            connectedRooms.delete(userId);
+            connectedGames.delete(userId);
+
             break;
           }
 
