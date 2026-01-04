@@ -48,6 +48,7 @@ export function setupWebSocketServer(server: any) {
     const connectedUserIds = Array.from(connectedUsers.keys()).filter(
       (id) => !!id
     );
+    console.log(connectedUserIds);
 
     // const conversations = await prisma.room.findMany({
     //   where: {
