@@ -925,7 +925,7 @@ export function setupWebSocketServer(server: any) {
               .filter((p) => p.status !== "leave");
             console.log(players);
 
-            const updatedPlayers = playersRaw.map((item) => {
+            const updatedPlayers = players.map((item) => {
               const player = JSON.parse(item);
 
               console.log("connected user id", userId);
