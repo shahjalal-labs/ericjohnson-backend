@@ -503,6 +503,8 @@ export function setupWebSocketServer(server: any) {
           }
 
           case "invite-player": {
+            connectedRooms.delete(userId);
+            connectedGames.delete(userId);
             if (!gameId) {
               ws.send(
                 JSON.stringify({
@@ -634,6 +636,8 @@ export function setupWebSocketServer(server: any) {
 
           //for player ready status
           case "user-ready": {
+            connectedRooms.delete(userId);
+            connectedGames.delete(userId);
             if (!gameId || !incommingRoomId) {
               ws.send(
                 JSON.stringify({
@@ -650,6 +654,7 @@ export function setupWebSocketServer(server: any) {
 
             // const connectedRoom = connectedRooms.get(userId);
             // if (connectedRoom) {
+            //   console.log(connectedRoom);
             //   ws.send(
             //     JSON.stringify({
             //       type: "error",
@@ -1040,14 +1045,20 @@ export function setupWebSocketServer(server: any) {
       if (userId) {
         const gameRoomId = connectedRooms.get(userId);
         const gameId = connectedGames.get(userId);
-        if (gameRoomId) {
+        if (gameRoomId !== undefined) {
           const playersKey = `gameRoom:${gameRoomId}:${gameId}:players`;
           const playersRaw = await redisClient.lrange(playersKey, 0, -1);
           const players = playersRaw.map((p) => JSON.parse(p));
 
-          const updatedPlayers = players.map((p) =>
-            p.userId === userId ? { ...p, status: "leave" } : p
-          );
+          const updatedPlayers = playersRaw.map((item) => {
+            const player = JSON.parse(item);
+
+            if (player.userId === userId) {
+              player.status = players.length === 1 ? "finished" : "leave";
+            }
+
+            return player;
+          });
 
           // Broadcast updated players
           updatedPlayers.forEach((p) => {
