@@ -514,6 +514,8 @@ export function setupWebSocketServer(server: any) {
               break;
             }
 
+            console.log("payloadUserId  in invite-player", payloadUserId);
+
             connectedRooms.delete(payloadUserId);
             connectedGames.delete(payloadUserId);
 
@@ -602,6 +604,8 @@ export function setupWebSocketServer(server: any) {
                 })
               );
             }
+            console.log("payloadUserId in get-invited-games", payloadUserId);
+
             const inviteKey = `user:${payloadUserId}:invites`;
 
             const invitesRaw = await redisClient.lrange(inviteKey, 0, -1);
@@ -628,6 +632,8 @@ export function setupWebSocketServer(server: any) {
               );
               break;
             }
+
+            console.log("payloadUserId in user-ready", payloadUserId);
 
             connectedRooms.delete(payloadUserId);
             connectedGames.delete(payloadUserId);
@@ -734,6 +740,8 @@ export function setupWebSocketServer(server: any) {
               break;
             }
 
+            console.log("payloadUserId in start game", payloadUserId);
+
             const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
             const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
 
@@ -812,6 +820,8 @@ export function setupWebSocketServer(server: any) {
               break;
             }
 
+            console.log("payloadUserId in score update", payloadUserId);
+
             const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
 
             const playersRaw = await redisClient.lrange(playersKey, 0, -1);
@@ -884,7 +894,6 @@ export function setupWebSocketServer(server: any) {
           }
 
           case "leave-game": {
-            console.log("get from payload", incommingRoomId, gameId);
             if (!gameId && !incommingRoomId && !payloadUserId) {
               ws.send(
                 JSON.stringify({
@@ -894,6 +903,8 @@ export function setupWebSocketServer(server: any) {
               );
               break;
             }
+            console.log("get from payload", incommingRoomId, gameId);
+            console.log("payloadUserId in score leave game", payloadUserId);
 
             const hostKey = `gameRoom:${incommingRoomId}:${gameId}:host`;
             const playersKey = `gameRoom:${incommingRoomId}:${gameId}:players`;
