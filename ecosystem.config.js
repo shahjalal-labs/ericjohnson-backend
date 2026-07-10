@@ -16,5 +16,13 @@ module.exports = {
         NODE_ENV: "production",
       },
     },
+    {
+      name: "playspark-game-worker",
+      script: "./dist/queues/game.worker.js",
+      watch: false,
+      env: {
+        NODE_ENV: "production",
+      },
+    },
   ],
 };

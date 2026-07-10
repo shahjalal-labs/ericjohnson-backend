@@ -9,6 +9,8 @@ import { bullBoardRouter } from "./bullBoard";
 import basicAuth from "express-basic-auth";
 import axios from "axios";
 import xml2js from "xml2js";
+import { redis } from "./helpers/game/game.redis";
+import { registerMetrics } from "./helpers/game/metrics";
 
 const app: Application = express();
 
@@ -35,6 +37,28 @@ app.get("/", (req: Request, res: Response) => {
   });
 });
 
+app.get("/ready", async (_, res) => {
+  try {
+    if (!redis.isOpen) {
+      return res.status(503).json({ status: "redis_not_ready" });
+    }
+    await prisma.$runCommandRaw({ ping: 1 });
+    return res.status(200).json({ status: "ready" });
+  } catch {
+    return res.status(503).json({ status: "db_not_ready" });
+  }
+});
+
+// app.get("/zego-token", generateZegoToken);
+
+// // file upload
+// app.post("/file-upload", uploadFile.single("file"), fileUploadController);
+
+app.get("/metrics", async (_, res) => {
+  res.setHeader("Content-Type", registerMetrics.contentType);
+  res.send(await registerMetrics.metrics());
+});
+
 app.get("/api/game", async (req, res) => {
   try {
     const response = await axios.get(
@@ -43,7 +67,7 @@ app.get("/api/game", async (req, res) => {
         headers: {
           "User-Agent": "MyApp",
         },
-      }
+      },
     );
 
     const xml = response.data;
@@ -82,7 +106,7 @@ app.use(
     users: { admin: process.env.BULLBOARD_PASSWORD || "supersecret" },
     challenge: true,
   }),
-  bullBoardRouter
+  bullBoardRouter,
 );
 app.use(GlobalErrorHandler);
 app.use((req: Request, res: Response, next: NextFunction) => {
