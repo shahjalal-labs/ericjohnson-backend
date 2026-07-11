@@ -11,6 +11,7 @@ import axios from "axios";
 import xml2js from "xml2js";
 import { redis } from "./helpers/game/game.redis";
 import { registerMetrics } from "./helpers/game/metrics";
+import { generateZegoToken } from "./helpers/game/zego.controller";
 
 const app: Application = express();
 
@@ -49,10 +50,10 @@ app.get("/ready", async (_, res) => {
   }
 });
 
-// app.get("/zego-token", generateZegoToken);
+app.get("/zego-token", generateZegoToken);
 
 // // file upload
-// app.post("/file-upload", uploadFile.single("file"), fileUploadController);
+
 
 app.get("/metrics", async (_, res) => {
   res.setHeader("Content-Type", registerMetrics.contentType);
