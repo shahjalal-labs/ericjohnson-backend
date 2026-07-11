@@ -24,6 +24,10 @@ export default {
     host: process.env.SMTP_HOST,
     port: process.env.EMAIL_PORT,
   },
+   emailSender: {
+    email: process.env.EMAIL,
+    app_pass: process.env.APP_PASS,
+  },
   aws: {
     access_key_id: process.env.AWS_ACCESS_KEY_ID,
     secret_access_key: process.env.AWS_SECRET_ACCESS_KEY,

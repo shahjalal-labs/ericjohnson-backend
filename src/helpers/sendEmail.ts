@@ -4,22 +4,31 @@ const sendEmail = async (
   to: string,
   subject: string,
   html: string,
-  text?: string
+  text?: string,
 ) => {
   // Create a transporter
+  // const transporter = nodemailer.createTransport({
+  //   host: config.smtp.host,
+  //   port: Number(config.smtp.port),
+  //   secure: true,
+  //   auth: {
+  //     user: config.smtp.email,
+  //     pass: config.smtp.app_pass,
+  //   },
+  // });
   const transporter = nodemailer.createTransport({
-    host: config.smtp.host,
-    port: Number(config.smtp.port),
-    secure: true,
+    service: "gmail",
+    port: 587,
+    secure: false,
     auth: {
-      user: config.smtp.email,
-      pass: config.smtp.app_pass,
+      user: config.emailSender.email,
+      pass: config.emailSender.app_pass,
     },
   });
 
   // Email options
   const mailOptions = {
-    from: `${config.smtp.name} <${config.smtp.email}>`,
+    from: config.emailSender.email,
     to,
     subject,
     html,

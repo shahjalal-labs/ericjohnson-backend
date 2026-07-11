@@ -6,10 +6,11 @@ export const verificationHtml = (fullName: string, otp: string) => {
       <tr>
         <td align="center">
           <table width="400" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow: hidden;">
+            
             <!-- Header -->
             <tr>
               <td align="center" style="background-color: #007BFF; padding: 20px;">
-                <h2 style="color: #ffffff; margin: 0;">Account Verification</h2>
+                <h2 style="color: #ffffff; margin: 0;">Verify Your Account</h2>
               </td>
             </tr>
 
@@ -17,15 +18,27 @@ export const verificationHtml = (fullName: string, otp: string) => {
             <tr>
               <td style="padding: 30px; color: #333333;">
                 <p style="font-size: 16px;">Hi <b>${fullName}</b>,</p>
-                <p style="font-size: 16px;">You requested to reset your password. Use the OTP below to proceed:</p>
                 
-                <p style="text-align: center; font-size: 28px; font-weight: bold; color: #007BFF; margin: 30px 0;">${otp}</p>
-                
-                <p style="font-size: 14px; color: #555555;">
-                  This OTP is valid for <b>5 minutes</b>. If you did not request this, please ignore this email.
+                <p style="font-size: 16px;">
+                  Welcome to Play Spark! Please use the verification code below to confirm your email address and activate your account.
                 </p>
                 
-                <p style="margin-top: 30px; font-size: 16px;">Thanks,<br>The Support Team</p>
+                <p style="text-align: center; font-size: 28px; font-weight: bold; color: #007BFF; margin: 30px 0;">
+                  ${otp}
+                </p>
+                
+                <p style="font-size: 14px; color: #555555;">
+                  This verification code is valid for <b>5 minutes</b>. Please do not share this code with anyone.
+                </p>
+
+                <p style="font-size: 14px; color: #555555;">
+                  If you did not create an account with Play Spark, you can safely ignore this email.
+                </p>
+                
+                <p style="margin-top: 30px; font-size: 16px;">
+                  Thanks,<br>
+                  The Play Spark Team
+                </p>
               </td>
             </tr>
 
@@ -35,6 +48,7 @@ export const verificationHtml = (fullName: string, otp: string) => {
                 &copy; ${new Date().getFullYear()} Play Spark. All rights reserved.
               </td>
             </tr>
+
           </table>
         </td>
       </tr>

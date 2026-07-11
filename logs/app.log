@@ -70,3 +70,15 @@
 {"level":"info","message":"Event stream initialized"}
 {"level":"info","message":"Game worker initialized"}
 {"level":"info","message":"Shutdown requested","signal":"SIGINT"}
+{"level":"info","message":"Redis connected"}
+{"level":"info","message":"Redis pub/sub connected"}
+{"level":"info","message":"Socket server initialized"}
+{"level":"info","message":"Event stream initialized"}
+{"level":"info","message":"Game worker initialized"}
+{"level":"info","message":"Shutdown requested","signal":"SIGINT"}
+{"level":"info","message":"Redis connected"}
+{"level":"info","message":"Redis pub/sub connected"}
+{"level":"info","message":"Socket server initialized"}
+{"level":"info","message":"Event stream initialized"}
+{"level":"info","message":"Game worker initialized"}
+{"level":"info","message":"Shutdown requested","signal":"SIGINT"}
