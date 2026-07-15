@@ -55,7 +55,7 @@ const loginUserIntoDB = async (payload: {
   const accessToken = jwtHelpers.generateToken(
     { id: user.id, email: user.email, role: user.role },
     config.jwt.jwt_secret as string,
-    config.jwt.expires_in as string
+    config.jwt.expires_in as string,
   );
 
   const isSetup =
@@ -67,11 +67,15 @@ const loginUserIntoDB = async (payload: {
     user.interests.length !== 0;
 
   return {
-    accessToken,
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-    isSetup: isSetup ?? false,
+    user: {
+      id: user.id,
+      email: user.email,
+      avatar: user.profileImage,
+      name: user.fullName,
+      role: user.role,
+      isSetup: isSetup ?? false,
+    },
+    token: accessToken,
   };
 };
 
@@ -91,13 +95,13 @@ const authLogin = async (payload: {
     if (user.status === "Blocked") {
       throw new ApiError(
         400,
-        "This account was blocked, please contact support"
+        "This account was blocked, please contact support",
       );
     }
     const accessToken = jwtHelpers.generateToken(
       { id: user.id, email: user.email, role: user.role },
       config.jwt.jwt_secret as string,
-      config.jwt.expires_in as string
+      config.jwt.expires_in as string,
     );
     const isSetup =
       user.address &&
@@ -108,11 +112,15 @@ const authLogin = async (payload: {
       user.interests.length !== 0;
 
     return {
-      accessToken,
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      isSetup: isSetup ?? false,
+      user: {
+        id: user.id,
+        email: user.email,
+        avatar: user.profileImage,
+        name: user.fullName,
+        role: user.role,
+        isSetup: isSetup ?? false,
+      },
+      token: accessToken,
     };
   }
 
@@ -129,27 +137,31 @@ const authLogin = async (payload: {
   const accessToken = jwtHelpers.generateToken(
     { id: newUser.id, email: newUser.email, role: newUser.role },
     config.jwt.jwt_secret as string,
-    config.jwt.expires_in as string
+    config.jwt.expires_in as string,
   );
 
   await sendNotification(
     newUser.id,
     "Your account create has been successfully done!",
-    "Welcome!"
+    "Welcome!",
   );
 
   return {
-    accessToken,
-    userId: newUser.id,
-    email: newUser.email,
-    role: newUser.role,
-    isSetup: false,
+    user: {
+      id: newUser.id,
+      email: newUser.email,
+      avatar: newUser.profileImage,
+      name: newUser.fullName,
+      role: newUser.role,
+      isSetup: false,
+    },
+    token: accessToken,
   };
 };
 
 const userLocationUpdateInRedis = async (
   userId: string,
-  userLocation: { longitude: number; latitude: number }
+  userLocation: { longitude: number; latitude: number },
 ) => {
   const redisGeoKey = "userLocations";
 
@@ -158,7 +170,7 @@ const userLocationUpdateInRedis = async (
     redisGeoKey,
     userLocation.longitude,
     userLocation.latitude,
-    userId
+    userId,
   );
   return;
 };
@@ -181,7 +193,7 @@ export const getNearbyUsers = async (userId: string, radiusKm: number = 1) => {
     radiusKm,
     "km",
     "WITHDIST",
-    "WITHCOORD"
+    "WITHCOORD",
   )) as any[];
 
   if (!nearbyRaw || nearbyRaw.length === 0) return [];
@@ -211,7 +223,7 @@ export const getNearbyUsers = async (userId: string, radiusKm: number = 1) => {
       `${nearbyIds.length} user${
         nearbyIds.length > 1 ? "s" : ""
       } matching in your location`,
-      "Matching users"
+      "Matching users",
     );
   }
 
@@ -230,12 +242,12 @@ const sendForgotPasswordOtpDB = async (email: string) => {
   // Generate OTP and expiry time
   const otp = generateOTP(); // 4-digit OTP
 
-  await redisClient.set(`otp:${email}`, otp, "EX", 300),
+  (await redisClient.set(`otp:${email}`, otp, "EX", 300),
     await emailQueue.add("forgotPasswordOtp", {
       email: existringUser.email,
       fullName: existringUser.fullName,
       otp: otp,
-    });
+    }));
 
   return otp;
 };
@@ -268,7 +280,7 @@ const verifyForgotPasswordOtpCodeDB = async (payload: {
   const forgetToken = jwtHelpers.generateToken(
     { id: userId, email },
     config.jwt.jwt_secret as string,
-    config.jwt.expires_in as string
+    config.jwt.expires_in as string,
   );
 
   return { forgetToken };
@@ -335,7 +347,7 @@ const updateProfileIntoDB = async (userId: string, userData: User) => {
 const updateProfileImages = async (
   userId: string,
   files: { [fieldname: string]: Express.Multer.File[] },
-  userData: User
+  userData: User,
 ) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
@@ -344,7 +356,7 @@ const updateProfileImages = async (
   const processImages = async (files?: Express.Multer.File[]) => {
     if (!files || files.length === 0) return [];
     return Promise.all(
-      files.map((file) => uploadInSpace(file, "users/profileimages"))
+      files.map((file) => uploadInSpace(file, "users/profileimages")),
     );
   };
 
@@ -397,7 +409,7 @@ const updateProfileImages = async (
 
 const changePassword = async (
   userId: string,
-  payload: { oldPassword: string; newPassword: string }
+  payload: { oldPassword: string; newPassword: string },
 ) => {
   const { oldPassword, newPassword } = payload;
   const userInfo = await prisma.user.findUnique({
@@ -428,7 +440,7 @@ const changePassword = async (
   await sendNotification(
     userInfo.id,
     "Your password has been changed successfully done!",
-    "Password changed!"
+    "Password changed!",
   );
 
   return;
