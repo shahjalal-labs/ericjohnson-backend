@@ -1,7 +1,6 @@
 import { Server } from "http";
 import app from "./app";
 import config from "./config";
-import { setupWebSocketServer } from "./app/modules/socket/socket.controller";
 import { closeSocket, initSocket } from "./helpers/game/game.socket";
 import { initEventStream } from "./helpers/game.event.stream";
 import { initGameWorker, stopGameWorker } from "./queues/game.worker";
@@ -22,10 +21,6 @@ async function main() {
   initEventStream();
   initGameWorker();
 
-  //test
-
-  setupWebSocketServer(server);
-
   const exitHandler = () => {
     if (server) {
       server.close(() => {
@@ -44,24 +39,23 @@ async function main() {
     exitHandler();
   });
 
+  const shutdown = async (signal: string) => {
+    logger.info("Shutdown requested", { signal });
+    server.close();
+    await stopGameWorker();
+    await closeSocket();
+    await closePubSub();
+    await disconnectRedis();
+    // await disconnectPrisma();
+    process.exit(0);
+  };
 
-     const shutdown = async (signal: string) => {
-      logger.info("Shutdown requested", { signal });
-      server.close();
-      await stopGameWorker();
-      await closeSocket();
-      await closePubSub();
-      await disconnectRedis();
-      // await disconnectPrisma();
-      process.exit(0);
-   };
-
-   process.on("SIGINT", () => {
-      void shutdown("SIGINT");
-   });
-   process.on("SIGTERM", () => {
-      void shutdown("SIGTERM");
-   });
+  process.on("SIGINT", () => {
+    void shutdown("SIGINT");
+  });
+  process.on("SIGTERM", () => {
+    void shutdown("SIGTERM");
+  });
 }
 
 main();

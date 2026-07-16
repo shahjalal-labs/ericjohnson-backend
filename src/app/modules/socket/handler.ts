@@ -17,14 +17,20 @@ import { verifyToken } from "../../../helpers/game/verifyGametoken";
 export const registerSocketHandlers = (io: Server) => {
   // 🛡️ AUTH MIDDLEWARE
   io.use((socket, next) => {
-    const token = socket.handshake.auth.token || socket.handshake.query.token;
+    const token =
+      socket.handshake.auth.token ||
+      socket.handshake.query.token ||
+      socket.handshake.headers["x-token"] ||
+      socket.handshake.query["x-token"];
 
     if (!token) return next(new Error("Authentication error"));
 
     const decoded = verifyToken(token);
     if (!decoded) return next(new Error("Authentication error"));
 
-    (socket as any).userId = decoded.userId;
+    (socket as any).userId = decoded.userId || (decoded as any).id;
+
+    if (!(socket as any).userId) return next(new Error("Authentication error"));
     next();
   });
 
