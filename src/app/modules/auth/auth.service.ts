@@ -12,6 +12,8 @@ import {
   sendNotifications,
 } from "../notifications/notification.services";
 import { emailQueue } from "../../../queues/emailQueue";
+import sendEmail from "../../../helpers/sendEmail";
+import { emailBodyForPasswordReset } from "../../../helpers/emailBody";
 
 const loginUserIntoDB = async (payload: {
   email: string;
@@ -230,81 +232,189 @@ export const getNearbyUsers = async (userId: string, radiusKm: number = 1) => {
 
   return matchedUsers;
 };
-
 const sendForgotPasswordOtpDB = async (email: string) => {
   const existringUser = await prisma.user.findUnique({
     where: {
       email: email,
     },
   });
+
   if (!existringUser) {
     throw new ApiError(404, "User not found");
   }
+
   // Generate OTP and expiry time
   const otp = generateOTP(); // 4-digit OTP
-
-  (await redisClient.set(`otp:${email}`, otp, "EX", 300),
-    await emailQueue.add("forgotPasswordOtp", {
-      email: existringUser.email,
-      fullName: existringUser.fullName,
-      otp: otp,
-    }));
+  const OTP_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minute
+  const expiresAt = Date.now() + OTP_EXPIRATION_TIME;
+  const subject = "Your Password Reset OTP";
+  const html = emailBodyForPasswordReset(existringUser.fullName, otp);
+  await sendEmail(email, subject, html);
+  await prisma.otp.upsert({
+    where: {
+      email: email,
+    },
+    update: { otp: otp, expiresAt: new Date(expiresAt) },
+    create: { email: email, otp: otp, expiresAt: new Date(expiresAt) },
+  });
 
   return otp;
 };
 
-const verifyForgotPasswordOtpCodeDB = async (payload: {
-  email: string;
-  otp: string;
-}) => {
+// verify otp code
+const verifyForgotPasswordOtpCodeDB = async (payload: any) => {
   const { email, otp } = payload;
 
+  if (!email && !otp) {
+    throw new ApiError(400, "Email and OTP are required.");
+  }
+
   const user = await prisma.user.findUnique({ where: { email: email } });
+
   if (!user) {
     throw new ApiError(404, "User not found");
   }
 
   const userId = user.id;
 
-  const savedOtp = await redisClient.get(`otp:${email}`);
-  if (!savedOtp) {
+  const verifyData = await prisma.otp.findUnique({
+    where: {
+      email: email,
+    },
+  });
+
+  if (!verifyData) {
     throw new ApiError(400, "Invalid or expired OTP.");
   }
+
+  const { otp: savedOtp, expiresAt } = verifyData;
 
   if (otp !== savedOtp) {
     throw new ApiError(401, "Invalid OTP.");
   }
 
-  // 2️⃣ Delete OTP from Redis after successful verification
-  await redisClient.del(`otp:${email}`);
+  if (Date.now() > expiresAt.getTime()) {
+    await prisma.otp.delete({
+      where: {
+        email: email,
+      },
+    }); // OTP has expired
+    throw new ApiError(410, "OTP has expired. Please request a new OTP.");
+  }
 
-  const forgetToken = jwtHelpers.generateToken(
+  // OTP is valid
+  await prisma.otp.delete({
+    where: {
+      email: email,
+    },
+  });
+
+  const accessToken = jwtHelpers.generateToken(
     { id: userId, email },
     config.jwt.jwt_secret as string,
     config.jwt.expires_in as string,
   );
 
-  return { forgetToken };
+  return { accessToken: accessToken };
 };
 
+// reset password
 const resetForgotPasswordDB = async (newPassword: string, userId: string) => {
-  const existingUser = await prisma.user.findUnique({ where: { id: userId } });
-  if (!existingUser) {
-    throw new ApiError(404, "User not found");
-  }
-  const email = existingUser.email as string;
-  const hashedPassword = bcrypt.hashSync(newPassword, 10);
+  const existingUser = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+  });
+
+  const hashedPassword = await bcrypt.hash(
+    newPassword,
+    Number(config.jwt.gen_salt),
+  );
 
   await prisma.user.update({
     where: {
-      email: email,
+      id: existingUser.id,
     },
     data: {
       password: hashedPassword,
     },
   });
+
   return;
 };
+
+// const sendForgotPasswordOtpDB = async (email: string) => {
+//   const existringUser = await prisma.user.findUnique({
+//     where: {
+//       email: email,
+//     },
+//   });
+//   if (!existringUser) {
+//     throw new ApiError(404, "User not found");
+//   }
+//   // Generate OTP and expiry time
+//   const otp = generateOTP(); // 4-digit OTP
+
+//   (await redisClient.set(`otp:${email}`, otp, "EX", 300),
+//     await emailQueue.add("forgotPasswordOtp", {
+//       email: existringUser.email,
+//       fullName: existringUser.fullName,
+//       otp: otp,
+//     }));
+
+//   return otp;
+// };
+
+// const verifyForgotPasswordOtpCodeDB = async (payload: {
+//   email: string;
+//   otp: string;
+// }) => {
+//   const { email, otp } = payload;
+
+//   const user = await prisma.user.findUnique({ where: { email: email } });
+//   if (!user) {
+//     throw new ApiError(404, "User not found");
+//   }
+
+//   const userId = user.id;
+
+//   const savedOtp = await redisClient.get(`otp:${email}`);
+//   if (!savedOtp) {
+//     throw new ApiError(400, "Invalid or expired OTP.");
+//   }
+
+//   if (otp !== savedOtp) {
+//     throw new ApiError(401, "Invalid OTP.");
+//   }
+
+//   // 2️⃣ Delete OTP from Redis after successful verification
+//   await redisClient.del(`otp:${email}`);
+
+//   const forgetToken = jwtHelpers.generateToken(
+//     { id: userId, email },
+//     config.jwt.jwt_secret as string,
+//     config.jwt.expires_in as string,
+//   );
+
+//   return { forgetToken };
+// };
+
+// const resetForgotPasswordDB = async (newPassword: string, userId: string) => {
+//   const existingUser = await prisma.user.findUnique({ where: { id: userId } });
+//   if (!existingUser) {
+//     throw new ApiError(404, "User not found");
+//   }
+//   const email = existingUser.email as string;
+//   const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+//   await prisma.user.update({
+//     where: {
+//       email: email,
+//     },
+//     data: {
+//       password: hashedPassword,
+//     },
+//   });
+//   return;
+// };
 
 const myProfile = async (userId: string) => {
   const user = await prisma.user.findUnique({
