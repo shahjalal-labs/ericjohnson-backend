@@ -13,7 +13,12 @@ const verificationSchema = z.object({
   fcmToken: z.string().optional(),
 });
 
+const paymentSchema = z.object({
+  paymentMethodId: z.string(), 
+});
+
 export const userValidation = {
   userRegistrationSchema,
   verificationSchema,
+  paymentSchema,
 };

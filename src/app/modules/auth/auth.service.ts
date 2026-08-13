@@ -130,6 +130,7 @@ const authLogin = async (payload: {
       fullName: payload.fullName,
       password: "123456",
       fcmToken: payload.fcmToken,
+      token: 1,
       appleId: payload.appleId,
     },
   });

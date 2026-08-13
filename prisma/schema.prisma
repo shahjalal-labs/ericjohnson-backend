@@ -44,6 +44,8 @@ model User {
   languages               String?
   visibleLanguages        Boolean    @default(true)
   intention               String?
+  token                   Int?
+  stripeCustomerId        String?
   visibleIntention        Boolean    @default(true)
   height                  Int?
   visibleHeight           Boolean    @default(true)

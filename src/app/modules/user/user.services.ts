@@ -8,6 +8,7 @@ import { sendNotification } from "../notifications/notification.services";
 import { emailQueue } from "../../../queues/emailQueue";
 import { jwtHelpers } from "../../../helpers/jwtHelpers";
 import config from "../../../config";
+import { createStripePaymentIntent } from "../../../helpers/stripe.helper";
 
 //create new user
 const createUserIntoDB = async (payload: User) => {
@@ -31,7 +32,7 @@ const createUserIntoDB = async (payload: User) => {
     `pendingUser:${payload.email}`,
     JSON.stringify(pendingUserData),
     "EX",
-    300 // Optional: expire after 5 minutes if you want
+    300, // Optional: expire after 5 minutes if you want
   );
 
   // Generate OTP and expiry time
@@ -73,6 +74,7 @@ const signupVerification = async (payload: {
         phoneNumber: pendingUser.phoneNumber,
         fullName: pendingUser.fullName,
         password: pendingUser.password,
+        token: 1,
         fcmToken: fcmToken || null,
       },
     });
@@ -80,7 +82,7 @@ const signupVerification = async (payload: {
     await sendNotification(
       createdUser.id,
       "Your account create has been successfully done!",
-      "Welcome!"
+      "Welcome!",
     );
     return createdUser;
   });
@@ -94,7 +96,7 @@ const signupVerification = async (payload: {
   const accessToken = jwtHelpers.generateToken(
     { id: user.id, email: user.email, role: user.role },
     config.jwt.jwt_secret as string,
-    config.jwt.expires_in as string
+    config.jwt.expires_in as string,
   );
 
   return {
@@ -180,8 +182,50 @@ const getSingleUserIntoDB = async (id: string, userId: string) => {
   };
 };
 
+const useTokenFromDB = async (userId: string) => {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { id: true, token: true },
+  });
+
+  if ((user.token as number) < 1) {
+    throw new ApiError(
+      400,
+      "Insufficient tokens, please purchase more tokens.",
+    );
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { token: { decrement: 1 } },
+  });
+
+  return;
+};
+
+const buyTokenIntoDB = async (userId: string, payload: any) => {
+  const paymentIntent = await createStripePaymentIntent(
+    userId,
+    payload.paymentMethodId,
+    20,
+  );
+
+  if (paymentIntent.status !== "succeeded") {
+    throw new ApiError(400, "Payment failed. Please try again.");
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { token: { increment: 1 } },
+  });
+  
+  return;
+};
+
 export const userService = {
   createUserIntoDB,
   signupVerification,
   getSingleUserIntoDB,
+  useTokenFromDB,
+  buyTokenIntoDB,
 };

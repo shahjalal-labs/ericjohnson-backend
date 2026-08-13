@@ -108,3 +108,32 @@
 {"level":"info","message":"Event stream initialized"}
 {"level":"info","message":"Game worker initialized"}
 {"level":"info","message":"Shutdown requested","signal":"SIGINT"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"error":"connect ECONNREFUSED 127.0.0.1:6379","level":"error","message":"Redis client error"}
+{"level":"info","message":"Redis connected"}
+{"level":"info","message":"Redis pub/sub connected"}
+{"level":"info","message":"Socket server initialized"}
+{"level":"info","message":"Event stream initialized"}
+{"level":"info","message":"Game worker initialized"}
+{"level":"info","message":"Shutdown requested","signal":"SIGINT"}
+{"level":"info","message":"Redis connected"}
+{"level":"info","message":"Redis pub/sub connected"}
+{"level":"info","message":"Socket server initialized"}
+{"level":"info","message":"Event stream initialized"}
+{"level":"info","message":"Game worker initialized"}
+{"level":"info","message":"Shutdown requested","signal":"SIGINT"}
+{"level":"info","message":"Redis connected"}
+{"level":"info","message":"Redis pub/sub connected"}
+{"level":"info","message":"Socket server initialized"}
+{"level":"info","message":"Event stream initialized"}
+{"level":"info","message":"Game worker initialized"}
+{"level":"info","message":"Shutdown requested","signal":"SIGINT"}
