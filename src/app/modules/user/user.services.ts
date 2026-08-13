@@ -28,6 +28,24 @@ const createUserIntoDB = async (payload: User) => {
     phoneNumber: payload.phoneNumber,
     password: hashedPassword,
   };
+  const otp = generateOTP();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+
+  await prisma.pendingUser.upsert({
+    where: { email: payload.email },
+    update: {
+      fullName: payload.fullName,
+      phoneNumber: payload.phoneNumber,
+      password: hashedPassword,
+      otp: otp,
+      expiresAt: expiresAt,
+    },
+    create: {
+      ...pendingUserData,
+      otp: otp,
+      expiresAt: expiresAt,
+    },
+  });
 
   // await redisClient.set(
   //   `pendingUser:${payload.email}`,
@@ -37,7 +55,7 @@ const createUserIntoDB = async (payload: User) => {
   // );
 
   // Generate OTP and expiry time
-  const otp = generateOTP(); // 4-digit OTP
+  // 4-digit OTP
   // await redisClient.set(`otp:${payload.email}`, otp, "EX", 300);
 
   // await emailQueue.add("sendOtp", {
@@ -61,16 +79,21 @@ const signupVerification = async (payload: {
 }) => {
   const { email, otp, fcmToken } = payload;
 
-  const savedOtp = await redisClient.get(`otp:${email}`);
-  if (!savedOtp) throw new ApiError(400, "Invalid or expired OTP.");
+  const pendingUser = await prisma.pendingUser.findUniqueOrThrow({
+    where: { email },
+  });
 
-  if (otp !== savedOtp) throw new ApiError(401, "Invalid OTP.");
-
-  const pendingUserStr = await redisClient.get(`pendingUser:${email}`);
-  if (!pendingUserStr) {
-    throw new ApiError(404, "No pending user found. Please sign up again.");
+  if (!pendingUser) {
+    throw new ApiError(404, "No pending user found for this email.");
   }
-  const pendingUser = JSON.parse(pendingUserStr);
+
+  if (pendingUser.otp !== otp) {
+    throw new ApiError(400, "Invalid OTP.");
+  }
+
+  if (pendingUser.expiresAt < new Date()) {
+    throw new ApiError(400, "OTP has expired.");
+  }
 
   const user = await prisma.$transaction(async (tx) => {
     const createdUser = await tx.user.create({
@@ -84,6 +107,10 @@ const signupVerification = async (payload: {
       },
     });
 
+    await tx.pendingUser.delete({
+      where: { email },
+    });
+
     await sendNotification(
       createdUser.id,
       "Your account create has been successfully done!",
@@ -91,12 +118,6 @@ const signupVerification = async (payload: {
     );
     return createdUser;
   });
-
-  // 5️⃣ Clean up Redis data after successful user creation
-  await Promise.all([
-    redisClient.del(`otp:${email}`),
-    redisClient.del(`pendingUser:${email}`),
-  ]);
 
   const accessToken = jwtHelpers.generateToken(
     { id: user.id, email: user.email, role: user.role },

@@ -79,6 +79,20 @@ model User {
   @@map("users")
 }
 
+model PendingUser {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  email       String   @unique
+  fullName    String
+  phoneNumber String?
+  password    String
+  otp         String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("pending_users")
+}
+
 model Friend {
   id        String       @id @default(auto()) @map("_id") @db.ObjectId
   user1Id   String       @db.ObjectId
