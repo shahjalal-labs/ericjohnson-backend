@@ -9,7 +9,7 @@ const loginSchema = z.object({
 const authLoginSchema = z.object({
   email: z.string().email("Invalid email address").optional(),
   fullName: z.string().min(1, "Full Name is required").optional(),
-  fcmToken: z.string().min(1, "FCM token is required").optional(),
+  fcmToken: z.string().optional(),
 });
 
 const locationUpdateSchema = z.object({

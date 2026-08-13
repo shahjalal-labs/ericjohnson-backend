@@ -31,7 +31,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "https://playspark.smtsigma.com",
-      "https://internet-bachelor.smtsigma.com",
+      "https://internetbachelor.com",
       "https://ericjohnson-game.vercel.app"
     ],
     credentials: true,
