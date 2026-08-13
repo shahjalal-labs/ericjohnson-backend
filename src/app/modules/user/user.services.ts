@@ -29,12 +29,11 @@ const createUserIntoDB = async (payload: User) => {
     password: hashedPassword,
   };
 
-  
   // await redisClient.set(
   //   `pendingUser:${payload.email}`,
   //   JSON.stringify(pendingUserData),
   //   "EX",
-  //   300, 
+  //   300,
   // );
 
   // Generate OTP and expiry time
@@ -210,10 +209,11 @@ const useTokenFromDB = async (userId: string) => {
 };
 
 const buyTokenIntoDB = async (userId: string, payload: any) => {
+  const amount = payload.totalToken * 20;
   const paymentIntent = await createStripePaymentIntent(
     userId,
     payload.paymentMethodId,
-    20,
+    amount,
   );
 
   if (paymentIntent.status !== "succeeded") {
@@ -222,9 +222,9 @@ const buyTokenIntoDB = async (userId: string, payload: any) => {
 
   await prisma.user.update({
     where: { id: userId },
-    data: { token: { increment: 1 } },
+    data: { token: { increment: payload.totalToken } },
   });
-  
+
   return;
 };
 

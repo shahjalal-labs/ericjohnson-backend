@@ -15,6 +15,7 @@ const verificationSchema = z.object({
 
 const paymentSchema = z.object({
   paymentMethodId: z.string(), 
+  totalToken: z.number().positive()
 });
 
 export const userValidation = {
