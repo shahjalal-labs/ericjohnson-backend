@@ -9,6 +9,8 @@ import { emailQueue } from "../../../queues/emailQueue";
 import { jwtHelpers } from "../../../helpers/jwtHelpers";
 import config from "../../../config";
 import { createStripePaymentIntent } from "../../../helpers/stripe.helper";
+import sendEmail from "../../../helpers/sendEmail";
+import { emailBody } from "../../../helpers/emailBody";
 
 //create new user
 const createUserIntoDB = async (payload: User) => {
@@ -27,25 +29,29 @@ const createUserIntoDB = async (payload: User) => {
     password: hashedPassword,
   };
 
-  // Save pending user in Redis (store as JSON string)
-  await redisClient.set(
-    `pendingUser:${payload.email}`,
-    JSON.stringify(pendingUserData),
-    "EX",
-    300, // Optional: expire after 5 minutes if you want
-  );
+  
+  // await redisClient.set(
+  //   `pendingUser:${payload.email}`,
+  //   JSON.stringify(pendingUserData),
+  //   "EX",
+  //   300, 
+  // );
 
   // Generate OTP and expiry time
   const otp = generateOTP(); // 4-digit OTP
-  await redisClient.set(`otp:${payload.email}`, otp, "EX", 300);
+  // await redisClient.set(`otp:${payload.email}`, otp, "EX", 300);
 
-  await emailQueue.add("sendOtp", {
-    email: payload.email,
-    fullName: payload.fullName,
-    otp,
-  });
+  // await emailQueue.add("sendOtp", {
+  //   email: payload.email,
+  //   fullName: payload.fullName,
+  //   otp,
+  // });
+  const subject = "Signup Verification OTP";
+  const html = emailBody(payload.fullName, otp);
 
-  return otp;
+  await sendEmail(payload.email, subject, html);
+
+  return;
 };
 
 // Verify user using OTP for signup
