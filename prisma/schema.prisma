@@ -25,6 +25,7 @@ model User {
   fcmToken                String?
   galleryImage1           String?
   galleryImage2           String?
+  isGoogleLogin           Boolean?   
   galleryImage3           String?
   galleryImage4           String?
   galleryImage5           String?

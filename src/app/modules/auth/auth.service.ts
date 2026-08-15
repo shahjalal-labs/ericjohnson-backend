@@ -37,6 +37,13 @@ const loginUserIntoDB = async (payload: {
     throw new ApiError(400, "This account was blocked");
   }
 
+  if (user.isGoogleLogin) {
+    throw new ApiError(
+      400,
+      "This account uses Google login. Please sign in with Google or reset your password.",
+    );
+  }
+
   const isPasswordValid = bcrypt.compareSync(payload.password, user.password);
 
   if (!isPasswordValid) {
@@ -134,6 +141,7 @@ const authLogin = async (payload: {
       fcmToken: payload.fcmToken,
       token: 1,
       appleId: payload.appleId,
+      isGoogleLogin:true
     },
   });
 
