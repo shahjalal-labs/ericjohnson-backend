@@ -3,12 +3,12 @@ import { Upload } from "@aws-sdk/lib-storage";
 import path from "path";
 
 const DO_CONFIG = {
-  endpoint: "https://api.zenexcloud.com",
+  endpoint: "https://s3.zenex.cloud",
   region: "s3v4",
   useSSL: false,
   credentials: {
-    accessKeyId: "Be7vSXLGn1EuMzy55jLO",
-    secretAccessKey: "Gw2pW1gqVAG0GH8SXzrRJXi1036IMv5dBdgcwJme",
+    accessKeyId: "6Q2Clv1Pih3UMBMIF1Ot",
+    secretAccessKey: "nYF3ScyoiVnXzzfgK66m0SpUqwCdUIl1N6zhj71j",
   },
   spaceName: "emdadullah",
 };
