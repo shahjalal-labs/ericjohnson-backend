@@ -29,10 +29,9 @@ const app: Application = express();
 app.use(
   cors({
     origin: [
-      "http://localhost:3000",
-      "https://playspark.smtsigma.com",
+      "http://localhost:3000",     
       "https://internetbachelor.com",
-      "https://ericjohnson-game.vercel.app"
+      "https://game.internetbachelor.com"
     ],
     credentials: true,
   })

@@ -141,7 +141,7 @@ const authLogin = async (payload: {
       fcmToken: payload.fcmToken,
       token: 1,
       appleId: payload.appleId,
-      isGoogleLogin:true
+      isGoogleLogin: true,
     },
   });
 
@@ -579,6 +579,22 @@ const deleteAccount = async (userId: string) => {
   return;
 };
 
+const myProfileVerify = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      fullName: true,
+      profileImage: true,
+    },
+  });
+  if (!user) {
+    throw new ApiError(404, "user not found!");
+  }
+
+  return { ...user };
+};
+
 export const authService = {
   loginUserIntoDB,
   authLogin,
@@ -592,4 +608,5 @@ export const authService = {
   updateProfileImages,
   changePassword,
   deleteAccount,
+  myProfileVerify,
 };

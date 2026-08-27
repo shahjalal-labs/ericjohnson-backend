@@ -90,6 +90,17 @@ const myProfile = catchAsync(async (req, res) => {
   });
 });
 
+const myProfileVerify = catchAsync(async (req, res) => {
+  const { id } = req.user;
+  const user = await authService.myProfileVerify(id);
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Your profile has been retrieved successfully",
+    data: user,
+  });
+});
+
 const updateProfile = catchAsync(async (req, res) => {
   const { id } = req.user;
   await authService.updateProfileIntoDB(id, req.body);
@@ -144,4 +155,5 @@ export const authController = {
   updateProfileImages,
   changePassword,
   deleteAccount,
+  myProfileVerify,
 };

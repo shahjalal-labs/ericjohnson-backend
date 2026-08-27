@@ -19,6 +19,7 @@ router.post(
   authController.authLogin
 );
 router.get("/profile", auth(), authController.myProfile);
+router.get("/verify", auth(), authController.myProfileVerify);
 router.post(
   "/user-location",
   auth(),
