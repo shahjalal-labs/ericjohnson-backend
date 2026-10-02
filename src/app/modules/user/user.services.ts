@@ -241,9 +241,15 @@ const buyTokenIntoDB = async (userId: string, payload: any) => {
     throw new ApiError(400, "Payment failed. Please try again.");
   }
 
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+
   await prisma.user.update({
     where: { id: userId },
-    data: { token: { increment: payload.totalToken } },
+    data: { token: user?.token + payload.totalToken },
   });
 
   return;
