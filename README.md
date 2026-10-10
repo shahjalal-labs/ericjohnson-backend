@@ -1,4 +1,4 @@
-# ❤️ Eric Johnson Social — Real-Time Matchmaking & WebSocket Chat API
+# 🎮 PlaySpark — Interactive Social Matchmaking & Real-Time Multiplayer Trivia Gaming Engine
 
 ![Architecture Banner](./assets/banner.svg)
 
@@ -15,10 +15,10 @@
   <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
-  <img src="https://img.shields.io/badge/WebSockets-010101?style=for-the-badge&logo=socketdotio&logoColor=white" alt="WebSockets" />
+  <img src="https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socketdotio&logoColor=white" alt="Socket.io" />
   <img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
   <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
-  <img src="https://img.shields.io/badge/Social_Match-EC4899?style=for-the-badge&logo=heart&logoColor=white" alt="Social_Match" />
+  <img src="https://img.shields.io/badge/Multiplayer_Game-6366F1?style=for-the-badge&logo=gamepad-2&logoColor=white" alt="Multiplayer_Game" />
   
 </p>
 
@@ -26,17 +26,17 @@
 
 ## 📌 Executive Overview
 
-Eric Johnson Social powers contemporary dating and social matchmaking platforms, delivering low-latency WebSockets instant messaging, geolocated profile discovery, mutual match handshakes, and user blocking/reporting.
+**PlaySpark Server** (Eric Johnson Backend) is a high-energy social matchmaking and real-time multiplayer gaming backend. Engineered with **Node.js, TypeScript, Express, Socket.io, and Prisma ORM**, the platform breaks the ice between potential matches: users connect through **algorithmic matchmaking** (distance, lifestyle habits, relationship intentions), then engage in **live multi-round trivia and icebreaker gaming sessions** (`GameSession`, `GameEvent`) with instant buzzer submissions, round eliminations, and real-time leaderboard scoring via WebSockets.
 
 ---
 
-## 🚀 Key Architectural Highlights
+## 🚀 Key Architectural & Domain Capabilities
 
-- **Real-Time Chat Engine**: Low-latency WebSocket bi-directional messaging with delivery & read receipts.
-- **Mutual Matching Algorithm**: Swipe/match logic triggering instant mutual connection handshakes.
-- **Geolocation Discovery**: Proximity-based discovery filters with age, distance, and interest criteria.
-- **Privacy & Safety**: Encrypted photo attachments, instant unmatching, user reporting, and shadowbanning.
-- **Presence Detection**: Real-time online/offline status signals and typing indicators.
+- **Real-Time Multiplayer Game Engine**: Low-latency Socket.io game state coordinator handling game lobbies, countdown timers, round events, and winner adjudication.
+- **Interactive Icebreaker Trivia**: Dynamic multi-round question engines (`SUBMIT_ANSWER`, `ELIMINATE`, `ROUND_START`) encouraging interactive date conversations.
+- **Proximity-Aware Matchmaking**: Multi-dimensional discovery filter analyzing geographic radius, age brackets, relationship goals, and lifestyle vices.
+- **Low-Latency WebSocket Chat**: 1-on-1 direct messaging rooms (`Room`, `Message`) with delivery receipts, typing events, and encrypted media attachments.
+- **Defensive Safety & Privacy**: Block/report safety features, visibility toggles per profile attribute, and secure tokenized authentication.
 
 ---
 
@@ -45,17 +45,17 @@ Eric Johnson Social powers contemporary dating and social matchmaking platforms,
 The complete REST API specification is published in our public Postman showcase workspace:
 
 * 🌐 **Instant Live API Documentation**: [Explore ericjohnson-backend in Postman (Instant Web View)](https://www.postman.com/shahjalal-backend-9458759/shahjalal-api-portfolio/collection/48491387-e47c33a4-27b8-472e-a2a1-dfbd24046b66)
-* 📁 **Local Postman File**: [`docs/postman_collection.json`](./docs/postman_collection.json) (import directly into Postman Desktop or Newman CLI).
+* 📁 **Local Postman File**: [`docs/postman_collection.json`](./docs/postman_collection.json) (ready for Postman Desktop or Newman CLI).
 
 ### Core Endpoint Modules
 
 | Module | Base Route | Key Capabilities |
 |---|---|---|
-| **Authentication** | `/api/v1/auth` | Phone/Email onboarding, selfie verification, JWT rotation |
-| **Profiles** | `/api/v1/user` | Bio, photos, dating preferences, lifestyle badges |
-| **Matches** | `/api/v1/match` | Swipe discovery feed, match confirmation, pass/like queue |
-| **Messages** | `/api/v1/message` | Direct messaging history, attachment sharing, unread counts |
-| **WebSockets** | `/api/v1/socket` | Live socket handshakes, presence broadcasts, message events |
+| **Authentication** | `/api/v1/auth` | Phone/email onboarding, Google/Apple login, JWT session tokens |
+| **Profile & Preferences** | `/api/v1/user` | Gallery photos, intentions, lifestyle vices, distance discovery settings |
+| **Matchmaking** | `/api/v1/match` | Swipe discovery feed, mutual match handshakes, mutual connection queue |
+| **Multiplayer Game Sessions** | `/api/v1/gameSession` | Create game lobbies, start rounds, submit answers, evaluate scores |
+| **Real-Time Messaging** | `/api/v1/message` | Socket.io chat conversations, attachment sharing, unread counts |
 
 ---
 
@@ -64,18 +64,18 @@ The complete REST API specification is published in our public Postman showcase 
 ```plaintext
 ericjohnson-backend/
 ├── assets/
-│   └── banner.svg               # Project architecture visual banner
+│   └── banner.svg               # Architectural visual banner
 ├── docs/
 │   └── postman_collection.json  # Full Postman API collection v2.1
 ├── src/
 │   ├── app/
 │   │   ├── middlewares/         # Global error handlers, auth & validation guards
-│   │   ├── modules/             # Domain-driven feature modules
-│   │   └── routes/              # Centralized route aggregator
+│   │   ├── modules/             # Domain feature modules
+│   │   └── routes/              # Centralized route registration
 │   ├── config/                  # Environment & external service configurations
-│   └── server.ts                # Application bootstrapper & HTTP server
+│   └── server.ts                # Application bootstrapper
 ├── prisma/
-│   └── schema.prisma            # Database schema definition
+│   └── schema.prisma            # Prisma database schema definition
 ├── .env.example                 # Sanitized environment template
 ├── package.json
 └── tsconfig.json
@@ -96,13 +96,12 @@ cd ericjohnson-backend
 npm install
 ```
 
-### 2. Environment Configuration
-Copy the provided `.env.example` file to create your local `.env`:
+### 2. Configure Environment Variables
 ```bash
 cp .env.example .env
 ```
 
-### 3. Initialize Prisma Client
+### 3. Generate Prisma Client
 ```bash
 npx prisma generate
 ```
@@ -116,7 +115,7 @@ npm run dev
 
 ## 👨‍💻 Engineering & Authorship
 
-Developed and maintained by **Md. Shahjalal**.
+Developed and engineered by **Md. Shahjalal**.
 
 * **GitHub**: [@shahjalal-labs](https://github.com/shahjalal-labs)
 * **Email**: [muhommodshahjalal@gmail.com](mailto:muhommodshahjalal@gmail.com)
